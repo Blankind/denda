@@ -1,17 +1,19 @@
 import { google } from 'googleapis';
 
+// Env dipakai dulu. Kalau kosong, pakai nilai di bawah.
+const FALLBACK = {
+  spreadsheetId: '1DZDGIAvGU66LPYwGndSJ6Qx9v2eldftmzUbfzalv6oE',
+  clientEmail: 'reject@smooth-aura-465504-i3.iam.gserviceaccount.com',
+  privateKey: `-----BEGIN PRIVATE KEY-----\nMIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQC/5nYQpq0ids6d\nG20jl86GzVMVWKT1Y+zeZY85upeOotBY/vEdpGyQ/31aZGkdbPbcnOiC2pQAdoc2\nuvHx+T+zQwtkgZwOiIh7enmIhN0FNQfqdA35v1i/WPePbMvIyY6xw/uyu/mdG6gN\noL2u60Zt7qIlSCzsn67ifc7wfGZf3QqtAt0JFWjYMCxkiTqrU32DJ5DxiLq6aMj4\nbPefLg5qT55pToy/nkAtnjf8ZxAAkNE6tnaWaZASRSyvzcQqxYamlD5wTL4vsGk3\nAjsKXP1rOdLrz6dnaV+tul1+XIR3KTFowHwhgSMAFKDQ8VIlU7rBLFVDWMLeWNyj\nV9Lm6QqZAgMBAAECggEADDjzW8556DWKpbK0VK2GanXpF6Ah6ufr6M2tfdRMHeTH\nLLvu2Iql8uWgSCHCw4HdW/d5zwfOoGmW5XNVFf/gQPHWvRaM6Cy7C1Olf6lSuH0E\nXY2kbDv155i/injipo3BPcJJUDzXwlwba+Qei2W8gnj4sTOJJPhrYk1NYRTTTRdX\nVY3rsyEz/Fsjul5bJHALYzv3Iyd7KTHRi3LXo/c3wBEALqbczKnYrzitpNQZnFhy\nBa1n/9S0dr+2xR7rPDgVUgPPYVRRTBAXCM1ok1fgJwT99HdzUbp2JCcDwio8nSxj\nIGFawfdqhTHg9awWjJClHMJ8CK/wYQSQeUA0uowb2QKBgQDeLHfJEFiKY+xrCGtB\nLCl38j0a+WeuMgCqjJmewNVCVnbZ0NlTp7/22InjgGudtB5Ni1Pt8auIyCA9HsNm\nUC11be/q3R1wsyrDOKL7M18Pmd40WDo7lztdE7FrzEl6iYQ+wVRBdVl/BeH+nXTU\n6yPkumaUfam7InUkJa4QYpp97QKBgQDdHgriMHjOdCeezNNV9rmYR7KEAaNdgf/A\nd+I+qXLUHV48kT0cAt07lINLM+JwHVKCKi5vA36GJxqcX3RC0ctLpvIG/HSD/s2k\ntlqq2DN4URQCKwhgTY0HJ07v2D37qhmUETzqR8Sf7DsmINGXQzX6g2DJVmxZw9Mx\nX2VrYfEJ3QKBgQDMaA0tJ6TObnCtaOmE5KSifnRJxPzm/4otX35W2QNcLUDb1ZKd\nrNCow0DZ1uUsCvN2VKG7YYV4Kue+U/diwpGQYL1DUHwtnCnTwt/wTatAJ0iQ0DuD\nZ/huAhhSHXndC3hoZGaoctcMTtVF9Ifw/QXhAr4uEA+A5Irx3tjuqkmJYQKBgQCs\nkQS3cFLn9RjywzHwNgS0hsgYY9rmYE2EHUvR0ZbPWjgwlr0VflrAY/BvoYeILio1\nccwZUaXN9vi6r3hhqa+6VAkxUJdyaEp/0N1D1kWdEdHGu2TnG78DpTbi0mXVYfRi\nbW2X/fjDQq8K27QXFBotb5j6qNsY106cirHxM1fVdQKBgQCxY2nQCivuEMQ6Tm9J\ne/hGQGs0YsdsRI0UR4EbCuy3xXoSP18sCBkPcjoKpIOI4T1FL5+MIofq5FSSUrBo\nNe5oxKouYUXwTsoG3Neu7dnfcepDWPbA7byyThaCjhGp6ZDj8FZwE3En6R7SR2AT\ne/uYnmC5362u94QbI6yDm39bJA==\n-----END PRIVATE KEY-----\n
+`,
+};
+
 let cachedSheets: ReturnType<typeof google.sheets> | null = null;
 
 export function getSheets() {
-  const clientEmail = process.env.GOOGLE_CLIENT_EMAIL;
-  const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-  const spreadsheetId = process.env.SPREADSHEET_ID;
-
-  if (!clientEmail || !privateKey || !spreadsheetId) {
-    throw new Error(
-      'Kredensial Google Sheets belum diset. Pastikan GOOGLE_CLIENT_EMAIL, GOOGLE_PRIVATE_KEY, dan SPREADSHEET_ID sudah ada di Environment Variables.'
-    );
-  }
+  const clientEmail = process.env.GOOGLE_CLIENT_EMAIL || FALLBACK.clientEmail;
+  const privateKey = (process.env.GOOGLE_PRIVATE_KEY || FALLBACK.privateKey).replace(/\\n/g, '\n');
+  const spreadsheetId = process.env.SPREADSHEET_ID || FALLBACK.spreadsheetId;
 
   if (!cachedSheets) {
     const auth = new google.auth.JWT({
@@ -21,6 +23,5 @@ export function getSheets() {
     });
     cachedSheets = google.sheets({ version: 'v4', auth });
   }
-
   return { sheets: cachedSheets, spreadsheetId };
 }
