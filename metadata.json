@@ -1,8 +1,0 @@
-{
-  "name": "Remix Remix Sistem Pencatatan Denda",
-  "description": "Sistem untuk mencatat denda dan punishment termasuk nama, cabang, nominal, keterangan, dan detail dokumen.",
-  "requestFramePermissions": [],
-  "majorCapabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
-  ]
-}
