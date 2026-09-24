@@ -1,6 +1,6 @@
 import { google } from 'googleapis';
 
-// Env dipakai dulu. Kalau kosong, pakai nilai di bawah.
+// Env dipakai dulu. Kalau kosong, pakai fallback di bawah.
 const FALLBACK = {
   spreadsheetId: '1DZDGIAvGU66LPYwGndSJ6Qx9v2eldftmzUbfzalv6oE',
   clientEmail: 'reject@smooth-aura-465504-i3.iam.gserviceaccount.com',
@@ -23,5 +23,6 @@ export function getSheets() {
     });
     cachedSheets = google.sheets({ version: 'v4', auth });
   }
+
   return { sheets: cachedSheets, spreadsheetId };
 }
