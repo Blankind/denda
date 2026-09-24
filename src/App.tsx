@@ -4,7 +4,8 @@ import { RecordList } from './components/RecordList';
 import { ActivityLogList } from './components/ActivityLogList';
 import { OffenderSummaryTab } from './components/OffenderSummaryTab';
 import { PenaltyRecord, ActivityLog } from './types';
-import { ShieldAlert, TrendingDown, Users, List, Activity, Pencil, UserCheck, CheckCircle2, Clock } from 'lucide-react';
+import { exportToExcel } from './exportExcel';
+import { Download, ShieldAlert, TrendingDown, Users, List, Activity, Pencil, UserCheck, CheckCircle2, Clock } from 'lucide-react';
 
 export default function App() {
   const [records, setRecords] = useState<PenaltyRecord[]>([]);
@@ -329,6 +330,14 @@ export default function App() {
               onChange={(e) => setFilterEndDate(e.target.value)}
               className="px-3 py-1.5 bg-zinc-50 border border-zinc-200 rounded-lg text-sm text-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-900"
             />
+            <button
+              onClick={() => exportToExcel(filteredRecords, filteredLogs, { start: filterStartDate, end: filterEndDate })}
+              disabled={filteredRecords.length === 0}
+              className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Excel
+            </button>
             {(filterStartDate || filterEndDate) && (
               <button 
                 onClick={() => { setFilterStartDate(''); setFilterEndDate(''); }}
