@@ -10,7 +10,11 @@ import { Download, ShieldAlert, TrendingDown, Users, List, Activity, Pencil, Use
 import { StockOpnamePage } from './pages/StockOpnamePage';
 import { DashboardPage } from './pages/DashboardPage';
 
-function DendaOperasionalApp() {
+interface DendaOperasionalAppProps {
+  initialBranch?: string;
+}
+
+function DendaOperasionalApp({ initialBranch }: DendaOperasionalAppProps = {}) {
   const [records, setRecords] = useState<PenaltyRecord[]>([]);
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [editingRecord, setEditingRecord] = useState<PenaltyRecord | null>(null);
@@ -21,9 +25,14 @@ function DendaOperasionalApp() {
   const [isPayoffOpen, setIsPayoffOpen] = useState(false);
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
+  const [branchFilter, setBranchFilter] = useState(initialBranch || '');
 
-  // Date Filtering Logic
+  const branches = [...new Set(records.map(r => r.branch).filter(Boolean))].sort();
+
+  // Date + Branch Filtering Logic
   const filteredRecords = records.filter(record => {
+    if (branchFilter && record.branch !== branchFilter) return false;
+
     let matchDate = true;
     if (filterStartDate || filterEndDate) {
       const recordDate = new Date(record.createdAt);
@@ -283,7 +292,7 @@ function DendaOperasionalApp() {
 
   return (
     <div className="min-h-screen bg-zinc-50 font-sans text-zinc-900">
-      <header className="bg-white border-b border-zinc-200 sticky top-0 z-10">
+      <header className="bg-white border-b border-zinc-200 sticky top-11 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-zinc-900 rounded-lg flex items-center justify-center text-white">
@@ -319,7 +328,17 @@ function DendaOperasionalApp() {
           <h2 className="text-xl font-bold text-zinc-900 tracking-tight">Ringkasan</h2>
           
           {/* Period Filter */}
-          <div className="flex items-center gap-3 bg-white p-2 rounded-xl border border-zinc-200 shadow-sm w-full sm:w-auto">
+          <div className="flex items-center gap-3 bg-white p-2 rounded-xl border border-zinc-200 shadow-sm w-full sm:w-auto flex-wrap">
+            {branches.length > 0 && (
+              <select
+                value={branchFilter}
+                onChange={(e) => setBranchFilter(e.target.value)}
+                className="px-3 py-1.5 bg-zinc-50 border border-zinc-200 rounded-lg text-sm text-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-900"
+              >
+                <option value="">Semua Cabang</option>
+                {branches.map(b => <option key={b} value={b}>{b}</option>)}
+              </select>
+            )}
             <span className="text-sm font-medium text-zinc-500 pl-2">Periode:</span>
             <input 
               type="date"
@@ -349,9 +368,9 @@ function DendaOperasionalApp() {
               <Download className="w-3.5 h-3.5" />
               Excel
             </button>
-            {(filterStartDate || filterEndDate) && (
+            {(filterStartDate || filterEndDate || branchFilter) && (
               <button 
-                onClick={() => { setFilterStartDate(''); setFilterEndDate(''); }}
+                onClick={() => { setFilterStartDate(''); setFilterEndDate(''); setBranchFilter(''); }}
                 className="text-xs text-rose-600 font-medium px-2 py-1.5 hover:bg-rose-50 rounded-lg transition-colors whitespace-nowrap"
               >
                 Reset
@@ -538,13 +557,24 @@ function DendaOperasionalApp() {
 }
 
 export default function App() {
-  const [page, setPage] = useState<'denda' | 'stock' | 'dashboard'>('denda');
+  const [page, setPage] = useState<'denda' | 'stock' | 'dashboard'>('dashboard');
+  const [initialBranch, setInitialBranch] = useState('');
+
+  const goTo = (target: 'denda' | 'stock' | 'dashboard') => {
+    setInitialBranch('');
+    setPage(target);
+  };
+
+  const handleNavigateFromDashboard = (target: 'denda' | 'stock', branch: string) => {
+    setInitialBranch(branch);
+    setPage(target);
+  };
 
   return (
     <div>
-      <div className="bg-zinc-900 px-4 sm:px-6 py-2 flex items-center gap-2">
+      <div className="bg-zinc-900 px-4 sm:px-6 py-2 flex items-center gap-2 sticky top-0 z-50">
         <button
-          onClick={() => setPage('dashboard')}
+          onClick={() => goTo('dashboard')}
           className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
             page === 'dashboard' ? 'bg-white text-zinc-900' : 'text-zinc-300 hover:text-white'
           }`}
@@ -553,7 +583,7 @@ export default function App() {
           Dashboard
         </button>
         <button
-          onClick={() => setPage('denda')}
+          onClick={() => goTo('denda')}
           className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
             page === 'denda' ? 'bg-white text-zinc-900' : 'text-zinc-300 hover:text-white'
           }`}
@@ -562,7 +592,7 @@ export default function App() {
           Denda Operasional
         </button>
         <button
-          onClick={() => setPage('stock')}
+          onClick={() => goTo('stock')}
           className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
             page === 'stock' ? 'bg-white text-zinc-900' : 'text-zinc-300 hover:text-white'
           }`}
@@ -571,9 +601,9 @@ export default function App() {
           Selisih Stock
         </button>
       </div>
-      {page === 'denda' && <DendaOperasionalApp />}
-      {page === 'stock' && <StockOpnamePage />}
-      {page === 'dashboard' && <DashboardPage />}
+      {page === 'denda' && <DendaOperasionalApp initialBranch={initialBranch} />}
+      {page === 'stock' && <StockOpnamePage initialBranch={initialBranch} />}
+      {page === 'dashboard' && <DashboardPage onNavigate={handleNavigateFromDashboard} />}
     </div>
   );
 }

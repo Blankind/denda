@@ -5,7 +5,11 @@ import { PenaltyRecord, StockOpnameRecord } from '../types';
 const formatRupiah = (amount: number) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
 
-export function DashboardPage() {
+interface DashboardPageProps {
+  onNavigate?: (page: 'denda' | 'stock', branch: string) => void;
+}
+
+export function DashboardPage({ onNavigate }: DashboardPageProps = {}) {
   const [dendaRecords, setDendaRecords] = useState<PenaltyRecord[]>([]);
   const [stockRecords, setStockRecords] = useState<StockOpnameRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -78,7 +82,7 @@ export function DashboardPage() {
         </div>
       )}
 
-      <header className="bg-white border-b border-zinc-200 px-4 py-4 sm:px-6">
+      <header className="bg-white border-b border-zinc-200 px-4 py-4 sm:px-6 sticky top-11 z-30">
         <div className="max-w-5xl mx-auto flex items-center gap-2">
           <Building2 className="w-5 h-5 text-zinc-900" />
           <h1 className="text-lg font-bold text-zinc-900">Dashboard per Cabang</h1>
@@ -120,7 +124,11 @@ export function DashboardPage() {
               </div>
 
               <div className="p-4 space-y-3">
-                <div>
+                <div
+                  onClick={() => onNavigate?.('denda', b.branch)}
+                  className={onNavigate ? 'cursor-pointer rounded-lg -m-2 p-2 hover:bg-zinc-50 transition-colors' : ''}
+                  title={onNavigate ? `Lihat Denda Operasional cabang ${b.branch}` : undefined}
+                >
                   <div className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">
                     <ShieldAlert className="w-3.5 h-3.5" /> Denda Operasional
                   </div>
@@ -140,7 +148,11 @@ export function DashboardPage() {
                   </div>
                 </div>
 
-                <div className="pt-2 border-t border-zinc-100">
+                <div
+                  onClick={() => onNavigate?.('stock', b.branch)}
+                  className={`pt-2 border-t border-zinc-100 ${onNavigate ? 'cursor-pointer rounded-lg -mx-2 px-2 pb-1 hover:bg-zinc-50 transition-colors' : ''}`}
+                  title={onNavigate ? `Lihat Selisih Stock cabang ${b.branch}` : undefined}
+                >
                   <div className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">
                     <Package className="w-3.5 h-3.5" /> Selisih Stock
                   </div>

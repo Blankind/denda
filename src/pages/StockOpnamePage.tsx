@@ -9,12 +9,17 @@ import { StockImportModal } from '../components/StockImportModal';
 const formatRupiah = (amount: number) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
 
-export function StockOpnamePage() {
+interface StockOpnamePageProps {
+  initialBranch?: string;
+}
+
+export function StockOpnamePage({ initialBranch }: StockOpnamePageProps = {}) {
   const [records, setRecords] = useState<StockOpnameRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isConfigured, setIsConfigured] = useState(true);
   const [query, setQuery] = useState('');
-  const [branchFilter, setBranchFilter] = useState('');
+  const [branchFilter, setBranchFilter] = useState(initialBranch || '');
+  const [hideNegative, setHideNegative] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editing, setEditing] = useState<StockOpnameRecord | null>(null);
   const [seed, setSeed] = useState<Partial<StockOpnameRecord> | null>(null);
@@ -53,10 +58,11 @@ export function StockOpnamePage() {
     const q = query.trim().toLowerCase();
     return records.filter(r => {
       if (branchFilter && r.branch !== branchFilter) return false;
+      if (hideNegative && r.systemValue < 0) return false;
       if (!q) return true;
       return r.itemName.toLowerCase().includes(q) || r.name.toLowerCase().includes(q) || r.branch.toLowerCase().includes(q);
     });
-  }, [records, query, branchFilter]);
+  }, [records, query, branchFilter, hideNegative]);
 
   const handleSave = async (data: StockOpnameRecord) => {
     const exists = records.some(r => r.id === data.id);
@@ -181,7 +187,7 @@ export function StockOpnamePage() {
         </div>
       )}
 
-      <header className="bg-white border-b border-zinc-200 px-4 py-4 sm:px-6">
+      <header className="bg-white border-b border-zinc-200 px-4 py-4 sm:px-6 sticky top-11 z-30">
         <div className="max-w-4xl mx-auto flex items-center gap-2">
           <Package className="w-5 h-5 text-zinc-900" />
           <h1 className="text-lg font-bold text-zinc-900">Selisih Stock Opname</h1>
@@ -237,6 +243,15 @@ export function StockOpnamePage() {
               {branches.map(b => <option key={b} value={b}>{b}</option>)}
             </select>
           )}
+          <label className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 bg-white border border-zinc-300 rounded-lg text-zinc-600 cursor-pointer whitespace-nowrap select-none">
+            <input
+              type="checkbox"
+              checked={hideNegative}
+              onChange={e => setHideNegative(e.target.checked)}
+              className="w-3.5 h-3.5"
+            />
+            Abaikan nilai minus (-)
+          </label>
           <button
             onClick={() => setIsImportOpen(true)}
             title="Upload file reconciliation selisih stock"
