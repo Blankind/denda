@@ -77,7 +77,7 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
         <div className="flex items-center justify-between p-4 border-b border-zinc-200">
           <h2 className="text-lg font-bold text-zinc-900">Lunasi Klaim Selisih Stock</h2>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-zinc-100 text-zinc-500">
@@ -96,6 +96,15 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
               className="w-full pl-9 pr-3 py-2 text-sm border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-zinc-900"
             />
           </div>
+          <label className="flex items-center gap-2 text-sm bg-zinc-50 rounded-lg p-2.5 cursor-pointer mt-3">
+            <input
+              type="checkbox"
+              checked={markClosed}
+              onChange={e => setMarkClosed(e.target.checked)}
+              className="w-4 h-4 rounded border-zinc-300 accent-emerald-600"
+            />
+            <span className="font-medium text-zinc-800">Tandai Lunas/Cukup (tutup siklus)</span>
+          </label>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -197,17 +206,8 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
             </div>
           </div>
 
-          <label className="flex items-center gap-2 text-sm bg-zinc-50 rounded-lg p-2.5 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={markClosed}
-              onChange={e => setMarkClosed(e.target.checked)}
-              className="w-4 h-4 rounded border-zinc-300 accent-emerald-600"
-            />
-            <span className="font-medium text-zinc-800">Tandai Lunas/Cukup (tutup siklus)</span>
-          </label>
-          <p className="text-xs text-zinc-400 -mt-2">
-            Kalau dicentang, item terpilih ditutup. Selisih baru untuk item yang sama nanti dicatat sebagai klaim baru, bukan menambah ke sini.
+          <p className="text-xs text-zinc-400">
+            Kalau "Tandai Lunas/Cukup" dicentang (atas), item terpilih ditutup. Selisih baru untuk item yang sama nanti dicatat sebagai klaim baru, bukan menambah ke sini.
           </p>
 
           <div className="flex items-center justify-between pt-1">
