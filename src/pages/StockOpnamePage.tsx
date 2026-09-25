@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { PlusCircle, Search, Package, Pencil, Trash2, Wallet, Upload, CheckCircle2 } from 'lucide-react';
-import { StockOpnameRecord } from '../types';
+import { PlusCircle, Search, Package, Pencil, Trash2, Wallet, Upload, CheckCircle2, RotateCcw, Wallet as WalletIcon } from 'lucide-react';
+import { StockOpnameRecord, ActivityLog } from '../types';
 import { StockOpnameForm } from '../components/StockOpnameForm';
 import { InstallmentModal } from '../components/InstallmentModal';
+import { ClaimPayoffModal } from '../components/ClaimPayoffModal';
 
 const formatRupiah = (amount: number) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
@@ -12,9 +13,12 @@ export function StockOpnamePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isConfigured, setIsConfigured] = useState(true);
   const [query, setQuery] = useState('');
+  const [branchFilter, setBranchFilter] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editing, setEditing] = useState<StockOpnameRecord | null>(null);
+  const [seed, setSeed] = useState<Partial<StockOpnameRecord> | null>(null);
   const [installmentTarget, setInstallmentTarget] = useState<StockOpnameRecord | null>(null);
+  const [isPayoffOpen, setIsPayoffOpen] = useState(false);
 
   useEffect(() => {
     fetch('/api/status')
@@ -22,30 +26,48 @@ export function StockOpnamePage() {
       .then(d => {
         setIsConfigured(!!d.configured);
         if (d.configured) {
-          return fetch('/api/stock')
-            .then(r => r.json())
-            .then(data => Array.isArray(data) ? setRecords(data) : setRecords([]));
+          return fetch('/api/stock').then(r => r.json()).then(data => Array.isArray(data) ? setRecords(data) : setRecords([]));
         }
       })
       .catch(() => setIsConfigured(false))
       .finally(() => setIsLoading(false));
   }, []);
 
+  const addLog = async (action: ActivityLog['action'], details: string) => {
+    if (!isConfigured) return;
+    const newLog: ActivityLog = { id: crypto.randomUUID(), timestamp: new Date().toISOString(), action, details };
+    try {
+      await fetch('/api/stock-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newLog),
+      });
+    } catch { /* log gagal tidak menghentikan alur utama */ }
+  };
+
+  const branches = useMemo(() => [...new Set(records.map(r => r.branch).filter(Boolean))].sort(), [records]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return records;
-    return records.filter(r =>
-      r.itemName.toLowerCase().includes(q) ||
-      r.name.toLowerCase().includes(q) ||
-      r.branch.toLowerCase().includes(q)
-    );
-  }, [records, query]);
+    return records.filter(r => {
+      if (branchFilter && r.branch !== branchFilter) return false;
+      if (!q) return true;
+      return r.itemName.toLowerCase().includes(q) || r.name.toLowerCase().includes(q) || r.branch.toLowerCase().includes(q);
+    });
+  }, [records, query, branchFilter]);
 
   const handleSave = async (data: StockOpnameRecord) => {
     const exists = records.some(r => r.id === data.id);
     setRecords(exists ? records.map(r => r.id === data.id ? data : r) : [data, ...records]);
     setIsFormOpen(false);
     setEditing(null);
+    setSeed(null);
+
+    if (exists) {
+      addLog('UPDATE', `Update klaim selisih "${data.itemName}" a.n ${data.name} (${data.branch}, periode ${data.period})`);
+    } else {
+      addLog('CREATE', `Klaim selisih baru "${data.itemName}" a.n ${data.name} (${data.branch}, periode ${data.period})`);
+    }
 
     if (!isConfigured) return;
     try {
@@ -67,11 +89,41 @@ export function StockOpnamePage() {
     }
   };
 
-  const handleInstallmentSave = (data: StockOpnameRecord) => handleSave(data);
+  const handleInstallmentSave = (data: StockOpnameRecord) => {
+    addLog(
+      data.isPaidOff ? 'UPDATE' : 'UPDATE',
+      `Update angsuran "${data.itemName}" a.n ${data.name}${data.isPaidOff ? ' — ditandai Lunas/Cukup' : ''}`
+    );
+    return handleSave(data);
+  };
+
+  const handleBulkSettle = async (updated: StockOpnameRecord[], meta: { totalPaid: number; count: number; closed: boolean }) => {
+    setRecords(prev => prev.map(r => updated.find(u => u.id === r.id) || r));
+
+    addLog(
+      'UPDATE',
+      `Pelunasan massal ${meta.count} klaim, total ${formatRupiah(meta.totalPaid)}${meta.closed ? ' — semua ditandai Lunas/Cukup' : ''}`
+    );
+
+    if (!isConfigured) return;
+    try {
+      await Promise.all(updated.map(r =>
+        fetch(`/api/stock/${r.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(r),
+        })
+      ));
+    } catch {
+      alert('Beberapa pembaruan mungkin gagal tersimpan ke Spreadsheet.');
+    }
+  };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Hapus data ini?')) return;
+    const target = records.find(r => r.id === id);
     setRecords(records.filter(r => r.id !== id));
+    if (target) addLog('DELETE', `Hapus klaim selisih "${target.itemName}" a.n ${target.name}`);
     if (!isConfigured) return;
     try {
       await fetch(`/api/stock/${id}`, { method: 'DELETE' });
@@ -80,9 +132,16 @@ export function StockOpnamePage() {
     }
   };
 
+  const startNewCycle = (r: StockOpnameRecord) => {
+    setSeed({ itemName: r.itemName, branch: r.branch, name: r.name });
+    setEditing(null);
+    setIsFormOpen(true);
+  };
+
   const totalSystem = filtered.reduce((s, r) => s + r.systemValue, 0);
   const totalClaim = filtered.reduce((s, r) => s + (r.claimValue ?? r.systemValue), 0);
   const totalPaid = filtered.reduce((s, r) => s + r.installments.reduce((a, i) => a + i.amount, 0), 0);
+  const openCount = filtered.filter(r => !r.isPaidOff).length;
 
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center text-zinc-400 text-sm">Memuat...</div>;
@@ -105,7 +164,7 @@ export function StockOpnamePage() {
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         {/* Ringkasan */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="bg-white rounded-xl border border-zinc-200 p-4">
             <p className="text-xs text-zinc-500">Nilai Sistem</p>
             <p className="text-lg font-bold text-zinc-900">{formatRupiah(totalSystem)}</p>
@@ -118,11 +177,15 @@ export function StockOpnamePage() {
             <p className="text-xs text-emerald-600">Sudah Dibayar</p>
             <p className="text-lg font-bold text-emerald-600">{formatRupiah(totalPaid)}</p>
           </div>
+          <div className="bg-white rounded-xl border border-zinc-200 p-4">
+            <p className="text-xs text-amber-600">Klaim Terbuka</p>
+            <p className="text-lg font-bold text-amber-600">{openCount}</p>
+          </div>
         </div>
 
         {/* Toolbar */}
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 min-w-[160px]">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
             <input
               value={query}
@@ -131,6 +194,16 @@ export function StockOpnamePage() {
               className="w-full pl-9 pr-3 py-2 text-sm border border-zinc-300 rounded-lg bg-white"
             />
           </div>
+          {branches.length > 0 && (
+            <select
+              value={branchFilter}
+              onChange={e => setBranchFilter(e.target.value)}
+              className="px-3 py-2 text-sm border border-zinc-300 rounded-lg bg-white"
+            >
+              <option value="">Semua Cabang</option>
+              {branches.map(b => <option key={b} value={b}>{b}</option>)}
+            </select>
+          )}
           <button
             disabled
             title="Segera hadir: upload data selisih dari file"
@@ -140,8 +213,15 @@ export function StockOpnamePage() {
             Upload File
           </button>
           <button
-            onClick={() => { setEditing(null); setIsFormOpen(true); }}
+            onClick={() => setIsPayoffOpen(true)}
             className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 bg-zinc-900 text-white rounded-lg hover:bg-zinc-800 whitespace-nowrap"
+          >
+            <WalletIcon className="w-3.5 h-3.5" />
+            Lunasi
+          </button>
+          <button
+            onClick={() => { setEditing(null); setSeed(null); setIsFormOpen(true); }}
+            className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 whitespace-nowrap"
           >
             <PlusCircle className="w-3.5 h-3.5" />
             Tambah
@@ -160,31 +240,42 @@ export function StockOpnamePage() {
             return (
               <div key={r.id} className="bg-white rounded-xl border border-zinc-200 p-4 flex items-center gap-3">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-semibold text-zinc-900 truncate">{r.itemName}</p>
+                    <span className="text-xs text-zinc-400 bg-zinc-100 px-1.5 py-0.5 rounded">{r.period}</span>
                     {r.isPaidOff && (
                       <span className="flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
-                        <CheckCircle2 className="w-3 h-3" /> Lunas
+                        <CheckCircle2 className="w-3 h-3" /> Lunas/Cukup
                       </span>
                     )}
                   </div>
                   <p className="text-xs text-zinc-500 truncate">{r.name} · {r.branch}{r.qtySelisih ? ` · ${r.qtySelisih} pcs` : ''}</p>
-                  <div className="flex items-center gap-3 mt-1 text-xs">
+                  <div className="flex items-center gap-3 mt-1 text-xs flex-wrap">
                     <span className="text-zinc-500">Klaim: <b className="text-zinc-800">{formatRupiah(base)}</b></span>
                     <span className="text-emerald-600">Dibayar: <b>{formatRupiah(paid)}</b></span>
                     {!r.isPaidOff && sisa > 0 && <span className="text-amber-600">Sisa: <b>{formatRupiah(sisa)}</b></span>}
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
+                  {r.isPaidOff ? (
+                    <button
+                      onClick={() => startNewCycle(r)}
+                      title="Buat klaim baru (siklus baru untuk item ini)"
+                      className="p-2 rounded-lg text-zinc-500 hover:bg-zinc-100 hover:text-blue-600"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setInstallmentTarget(r)}
+                      title="Kelola Angsuran"
+                      className="p-2 rounded-lg text-zinc-500 hover:bg-zinc-100 hover:text-emerald-600"
+                    >
+                      <Wallet className="w-4 h-4" />
+                    </button>
+                  )}
                   <button
-                    onClick={() => setInstallmentTarget(r)}
-                    title="Kelola Angsuran"
-                    className="p-2 rounded-lg text-zinc-500 hover:bg-zinc-100 hover:text-emerald-600"
-                  >
-                    <Wallet className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => { setEditing(r); setIsFormOpen(true); }}
+                    onClick={() => { setEditing(r); setSeed(null); setIsFormOpen(true); }}
                     title="Edit"
                     className="p-2 rounded-lg text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
                   >
@@ -207,8 +298,9 @@ export function StockOpnamePage() {
       {isFormOpen && (
         <StockOpnameForm
           initial={editing}
+          seed={seed}
           onSave={handleSave}
-          onClose={() => { setIsFormOpen(false); setEditing(null); }}
+          onClose={() => { setIsFormOpen(false); setEditing(null); setSeed(null); }}
         />
       )}
 
@@ -217,6 +309,14 @@ export function StockOpnamePage() {
           record={installmentTarget}
           onSave={handleInstallmentSave}
           onClose={() => setInstallmentTarget(null)}
+        />
+      )}
+
+      {isPayoffOpen && (
+        <ClaimPayoffModal
+          records={records}
+          onBulkSettle={handleBulkSettle}
+          onClose={() => setIsPayoffOpen(false)}
         />
       )}
     </div>

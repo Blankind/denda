@@ -2,16 +2,22 @@ import { useState, FormEvent } from 'react';
 import { X } from 'lucide-react';
 import { StockOpnameRecord } from '../types';
 
+const currentPeriod = () => new Date().toISOString().slice(0, 7); // YYYY-MM
+
 interface StockOpnameFormProps {
   initial: StockOpnameRecord | null;
+  // Prefill untuk klaim baru (siklus baru dari item yang sudah ditutup), tetap dibuat sebagai record baru
+  seed?: Partial<StockOpnameRecord> | null;
   onSave: (data: StockOpnameRecord) => void;
   onClose: () => void;
 }
 
-export function StockOpnameForm({ initial, onSave, onClose }: StockOpnameFormProps) {
-  const [itemName, setItemName] = useState(initial?.itemName || '');
-  const [branch, setBranch] = useState(initial?.branch || '');
-  const [name, setName] = useState(initial?.name || '');
+export function StockOpnameForm({ initial, seed, onSave, onClose }: StockOpnameFormProps) {
+  const base = initial || seed || null;
+  const [itemName, setItemName] = useState(base?.itemName || '');
+  const [branch, setBranch] = useState(base?.branch || '');
+  const [name, setName] = useState(base?.name || '');
+  const [period, setPeriod] = useState(initial?.period || currentPeriod());
   const [qtySelisih, setQtySelisih] = useState(initial?.qtySelisih?.toString() || '');
   const [systemValue, setSystemValue] = useState(initial?.systemValue?.toString() || '');
   const [claimValue, setClaimValue] = useState(initial?.claimValue?.toString() || '');
@@ -24,6 +30,7 @@ export function StockOpnameForm({ initial, onSave, onClose }: StockOpnameFormPro
     onSave({
       id: initial?.id || crypto.randomUUID(),
       createdAt: initial?.createdAt || new Date().toISOString(),
+      period,
       itemName,
       branch,
       name,
@@ -41,12 +48,18 @@ export function StockOpnameForm({ initial, onSave, onClose }: StockOpnameFormPro
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[85vh] flex flex-col">
         <div className="flex items-center justify-between p-4 border-b border-zinc-200">
           <h2 className="text-lg font-bold text-zinc-900">
-            {initial ? 'Edit' : 'Tambah'} Selisih Stock
+            {initial ? 'Edit' : seed ? 'Klaim Baru (Siklus Baru)' : 'Tambah'} Selisih Stock
           </h2>
           <button type="button" onClick={onClose} className="p-1.5 rounded-lg hover:bg-zinc-100 text-zinc-500">
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {seed && !initial && (
+          <p className="text-xs text-amber-700 bg-amber-50 px-4 py-2">
+            Siklus sebelumnya untuk item ini sudah ditutup (Lunas/Cukup). Ini akan tercatat sebagai klaim baru terpisah, bukan menimpa data lama.
+          </p>
+        )}
 
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto flex flex-col">
           <div className="p-4 space-y-3 flex-1">
@@ -80,6 +93,17 @@ export function StockOpnameForm({ initial, onSave, onClose }: StockOpnameFormPro
                   className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-lg"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-zinc-500 mb-1">Periode (Bulan Denda)</label>
+              <input
+                type="month"
+                required
+                value={period}
+                onChange={e => setPeriod(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-lg"
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-3">

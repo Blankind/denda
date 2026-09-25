@@ -1,24 +1,25 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getSheets } from './_sheets.js';
 
-// Kolom: id | createdAt | itemName | branch | name | qtySelisih | systemValue | claimValue | installmentsJson | isPaidOff | description
-const RANGE = 'StockOpname!A:K';
+// Kolom: id | createdAt | period | itemName | branch | name | qtySelisih | systemValue | claimValue | installmentsJson | isPaidOff | description
+const RANGE = 'StockOpname!A:L';
 
 function parseRow(row: any[]) {
   return {
     id: row[0] || '',
     createdAt: row[1] || '',
-    itemName: row[2] || '',
-    branch: row[3] || '',
-    name: row[4] || '',
-    qtySelisih: row[5] !== undefined && row[5] !== '' ? Number(row[5]) : undefined,
-    systemValue: Number(row[6] || 0),
-    claimValue: row[7] !== undefined && row[7] !== '' ? Number(row[7]) : undefined,
+    period: row[2] || '',
+    itemName: row[3] || '',
+    branch: row[4] || '',
+    name: row[5] || '',
+    qtySelisih: row[6] !== undefined && row[6] !== '' ? Number(row[6]) : undefined,
+    systemValue: Number(row[7] || 0),
+    claimValue: row[8] !== undefined && row[8] !== '' ? Number(row[8]) : undefined,
     installments: (() => {
-      try { return JSON.parse(row[8] || '[]'); } catch { return []; }
+      try { return JSON.parse(row[9] || '[]'); } catch { return []; }
     })(),
-    isPaidOff: row[9] === 'TRUE' || row[9] === true,
-    description: row[10] || '',
+    isPaidOff: row[10] === 'TRUE' || row[10] === true,
+    description: row[11] || '',
   };
 }
 
@@ -26,6 +27,7 @@ function toRow(r: any) {
   return [
     r.id,
     r.createdAt,
+    r.period || '',
     r.itemName,
     r.branch,
     r.name,

@@ -6,8 +6,9 @@ import { OffenderSummaryTab } from './components/OffenderSummaryTab';
 import { PayoffModal } from './components/PayoffModal';
 import { PenaltyRecord, ActivityLog } from './types';
 import { exportToExcel } from './exportExcel';
-import { Download, ShieldAlert, TrendingDown, Users, List, Activity, Pencil, UserCheck, CheckCircle2, Clock, LayoutGrid, Package } from 'lucide-react';
+import { Download, ShieldAlert, TrendingDown, Users, List, Activity, Pencil, UserCheck, CheckCircle2, Clock, LayoutGrid, Package, Building2 } from 'lucide-react';
 import { StockOpnamePage } from './pages/StockOpnamePage';
+import { DashboardPage } from './pages/DashboardPage';
 
 function DendaOperasionalApp() {
   const [records, setRecords] = useState<PenaltyRecord[]>([]);
@@ -537,11 +538,20 @@ function DendaOperasionalApp() {
 }
 
 export default function App() {
-  const [page, setPage] = useState<'denda' | 'stock'>('denda');
+  const [page, setPage] = useState<'denda' | 'stock' | 'dashboard'>('denda');
 
   return (
     <div>
       <div className="bg-zinc-900 px-4 sm:px-6 py-2 flex items-center gap-2">
+        <button
+          onClick={() => setPage('dashboard')}
+          className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
+            page === 'dashboard' ? 'bg-white text-zinc-900' : 'text-zinc-300 hover:text-white'
+          }`}
+        >
+          <Building2 className="w-3.5 h-3.5" />
+          Dashboard
+        </button>
         <button
           onClick={() => setPage('denda')}
           className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
@@ -561,7 +571,9 @@ export default function App() {
           Selisih Stock
         </button>
       </div>
-      {page === 'denda' ? <DendaOperasionalApp /> : <StockOpnamePage />}
+      {page === 'denda' && <DendaOperasionalApp />}
+      {page === 'stock' && <StockOpnamePage />}
+      {page === 'dashboard' && <DashboardPage />}
     </div>
   );
 }

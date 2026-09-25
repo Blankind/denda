@@ -21,6 +21,7 @@ export interface Installment {
 export interface StockOpnameRecord {
   id: string;
   createdAt: string;
+  period: string; // format YYYY-MM, siklus klaim per bulan
   itemName: string;
   branch: string;
   name: string; // PIC / karyawan penanggung jawab
@@ -28,7 +29,7 @@ export interface StockOpnameRecord {
   systemValue: number; // nilai selisih murni dari sistem
   claimValue?: number; // besaran yang diklaimkan sesuai kebijakan atasan (bisa kosong dulu)
   installments: Installment[]; // riwayat angsuran
-  isPaidOff: boolean; // centang manual "Lunas" (bisa override meski sisa belum 0)
+  isPaidOff: boolean; // centang "Lunas/Cukup" -> menutup siklus klaim ini
   description?: string;
 }
 

@@ -7,6 +7,7 @@ function toRow(r: any) {
   return [
     r.id,
     r.createdAt,
+    r.period || '',
     r.itemName,
     r.branch,
     r.name,
@@ -29,7 +30,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   const targetId = req.query.id as string;
 
-  // PUT - update data (edit field, tambah angsuran, atau centang lunas)
+  // PUT - update data (edit field, tambah angsuran, atau centang lunas/cukup)
   if (req.method === 'PUT') {
     try {
       const response = await sheets.spreadsheets.values.get({ spreadsheetId, range: 'StockOpname!A:A' });
@@ -39,7 +40,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       await sheets.spreadsheets.values.update({
         spreadsheetId,
-        range: `StockOpname!A${rowIndex + 1}:K${rowIndex + 1}`,
+        range: `StockOpname!A${rowIndex + 1}:L${rowIndex + 1}`,
         valueInputOption: 'USER_ENTERED',
         requestBody: { values: [toRow(req.body)] },
       });
