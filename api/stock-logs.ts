@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getSheets } from './_sheets.js';
+import { ensureStockSheets } from './_stock-sheets.js';
 
 // Log aktivitas khusus modul Selisih Stock, terpisah dari Logs milik Denda Operasional.
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -7,6 +8,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   let spreadsheetId: string;
   try {
     ({ sheets, spreadsheetId } = getSheets());
+    await ensureStockSheets(sheets, spreadsheetId);
   } catch (e: any) {
     return res.status(500).json({ error: e.message });
   }

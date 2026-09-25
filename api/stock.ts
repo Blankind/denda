@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getSheets } from './_sheets.js';
+import { ensureStockSheets } from './_stock-sheets.js';
 
 // Kolom: id | createdAt | period | itemName | branch | name | qtySelisih | systemValue | claimValue | installmentsJson | isPaidOff | description
 const RANGE = 'StockOpname!A:L';
@@ -45,6 +46,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   let spreadsheetId: string;
   try {
     ({ sheets, spreadsheetId } = getSheets());
+    await ensureStockSheets(sheets, spreadsheetId);
   } catch (e: any) {
     return res.status(500).json({ error: e.message });
   }
