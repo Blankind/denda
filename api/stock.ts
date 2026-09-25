@@ -56,9 +56,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // GET - ambil semua data selisih stock
   if (req.method === 'GET') {
     try {
-      const response = await sheets.spreadsheets.values.get({ spreadsheetId, range: RANGE });
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: RANGE,
+        valueRenderOption: 'UNFORMATTED_VALUE',
+      });
       const rows = response.data.values || [];
       const records = rows.slice(1).map(parseRow).filter((r: any) => r.id);
+      records.sort((a: any, b: any) => b.createdAt.localeCompare(a.createdAt));
       return res.json(records);
     } catch (error: any) {
       return res.status(500).json({ error: error.message });
