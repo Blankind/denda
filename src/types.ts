@@ -29,7 +29,8 @@ export interface StockOpnameRecord {
   systemValue: number; // nilai selisih murni dari sistem
   claimValue?: number; // besaran yang diklaimkan sesuai kebijakan atasan (bisa kosong dulu)
   installments: Installment[]; // riwayat angsuran
-  isPaidOff: boolean; // centang "Lunas/Cukup" -> menutup siklus klaim ini
+  isPaidOff: boolean; // centang "Lunas/Cukup" -> menutup siklus klaim ini, pengampunan dihitung dari systemValue - claimValue
+  isNotRecognized?: boolean; // centang "Tidak Diakui sebagai Claim" -> diabaikan, tidak dihitung ke total claim
   description?: string;
 }
 

@@ -2,8 +2,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getSheets } from './_sheets.js';
 import { ensureStockSheets } from './_stock-sheets.js';
 
-// Kolom: id | createdAt | period | itemName | branch | name | qtySelisih | systemValue | claimValue | installmentsJson | isPaidOff | description
-const RANGE = 'StockOpname!A:L';
+// Kolom: id | createdAt | period | itemName | branch | name | qtySelisih | systemValue | claimValue | installmentsJson | isPaidOff | description | isNotRecognized
+const RANGE = 'StockOpname!A:M';
 
 function parseRow(row: any[]) {
   return {
@@ -21,6 +21,7 @@ function parseRow(row: any[]) {
     })(),
     isPaidOff: row[10] === 'TRUE' || row[10] === true,
     description: row[11] || '',
+    isNotRecognized: row[12] === 'TRUE' || row[12] === true,
   };
 }
 
@@ -38,6 +39,7 @@ function toRow(r: any) {
     JSON.stringify(r.installments || []),
     r.isPaidOff ? 'TRUE' : 'FALSE',
     r.description || '',
+    r.isNotRecognized ? 'TRUE' : 'FALSE',
   ];
 }
 

@@ -18,6 +18,7 @@ function toRow(r: any) {
     JSON.stringify(r.installments || []),
     r.isPaidOff ? 'TRUE' : 'FALSE',
     r.description || '',
+    r.isNotRecognized ? 'TRUE' : 'FALSE',
   ];
 }
 
@@ -42,7 +43,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       await sheets.spreadsheets.values.update({
         spreadsheetId,
-        range: `StockOpname!A${rowIndex + 1}:L${rowIndex + 1}`,
+        range: `StockOpname!A${rowIndex + 1}:M${rowIndex + 1}`,
         valueInputOption: 'USER_ENTERED',
         requestBody: { values: [toRow(req.body)] },
       });

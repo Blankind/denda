@@ -22,6 +22,7 @@ export function StockOpnameForm({ initial, seed, onSave, onClose }: StockOpnameF
   const [systemValue, setSystemValue] = useState(initial?.systemValue?.toString() || '');
   const [claimValue, setClaimValue] = useState(initial?.claimValue?.toString() || '');
   const [description, setDescription] = useState(initial?.description || '');
+  const [isNotRecognized, setIsNotRecognized] = useState(initial?.isNotRecognized || false);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -38,7 +39,8 @@ export function StockOpnameForm({ initial, seed, onSave, onClose }: StockOpnameF
       systemValue: Number(systemValue),
       claimValue: claimValue ? Number(claimValue) : undefined,
       installments: initial?.installments || [],
-      isPaidOff: initial?.isPaidOff || false,
+      isPaidOff: isNotRecognized ? false : (initial?.isPaidOff || false),
+      isNotRecognized,
       description,
     });
   };
@@ -154,6 +156,17 @@ export function StockOpnameForm({ initial, seed, onSave, onClose }: StockOpnameF
                 className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-lg resize-none"
               />
             </div>
+
+            <label className="flex items-center gap-2 text-sm bg-zinc-50 rounded-lg p-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isNotRecognized}
+                onChange={e => setIsNotRecognized(e.target.checked)}
+                className="w-4 h-4 rounded border-zinc-300 accent-zinc-900"
+              />
+              <span className="font-medium text-zinc-800">Tidak Diakui sebagai Claim</span>
+              <span className="text-xs text-zinc-400">(diabaikan, tidak dihitung ke total claim manapun)</span>
+            </label>
           </div>
 
           <div className="p-4 border-t border-zinc-200 flex justify-end gap-2 shrink-0">

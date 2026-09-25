@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { PlusCircle, Search, Package, Pencil, Trash2, Wallet, Upload, CheckCircle2, RotateCcw, Wallet as WalletIcon } from 'lucide-react';
+import { PlusCircle, Search, Package, Pencil, Trash2, Wallet, Upload, CheckCircle2, RotateCcw, Wallet as WalletIcon, Ban, HeartHandshake } from 'lucide-react';
 import { StockOpnameRecord, ActivityLog } from '../types';
 import { StockOpnameForm } from '../components/StockOpnameForm';
 import { InstallmentModal } from '../components/InstallmentModal';
 import { ClaimPayoffModal } from '../components/ClaimPayoffModal';
+import { StockImportModal } from '../components/StockImportModal';
 
 const formatRupiah = (amount: number) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
@@ -19,6 +20,7 @@ export function StockOpnamePage() {
   const [seed, setSeed] = useState<Partial<StockOpnameRecord> | null>(null);
   const [installmentTarget, setInstallmentTarget] = useState<StockOpnameRecord | null>(null);
   const [isPayoffOpen, setIsPayoffOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
 
   useEffect(() => {
     fetch('/api/status')
@@ -119,6 +121,22 @@ export function StockOpnamePage() {
     }
   };
 
+  const handleImport = async (newRecords: StockOpnameRecord[]) => {
+    setRecords(prev => [...newRecords, ...prev]);
+    addLog('CREATE', `Import ${newRecords.length} klaim selisih stock dari file`);
+
+    if (!isConfigured) return;
+    try {
+      await fetch('/api/stock-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newRecords),
+      });
+    } catch {
+      alert('Gagal menyimpan hasil import ke Spreadsheet.');
+    }
+  };
+
   const handleDelete = async (id: string) => {
     if (!confirm('Hapus data ini?')) return;
     const target = records.find(r => r.id === id);
@@ -138,10 +156,18 @@ export function StockOpnamePage() {
     setIsFormOpen(true);
   };
 
-  const totalSystem = filtered.reduce((s, r) => s + r.systemValue, 0);
-  const totalClaim = filtered.reduce((s, r) => s + (r.claimValue ?? r.systemValue), 0);
-  const totalPaid = filtered.reduce((s, r) => s + r.installments.reduce((a, i) => a + i.amount, 0), 0);
-  const openCount = filtered.filter(r => !r.isPaidOff).length;
+  // "Tidak Diakui" diabaikan total, tidak ikut dihitung sama sekali.
+  const recognized = filtered.filter(r => !r.isNotRecognized);
+  const notRecognizedCount = filtered.length - recognized.length;
+  const totalSystem = recognized.reduce((s, r) => s + r.systemValue, 0);
+  const totalClaim = recognized.reduce((s, r) => s + (r.claimValue ?? r.systemValue), 0);
+  const totalPaid = recognized.reduce((s, r) => s + r.installments.reduce((a, i) => a + i.amount, 0), 0);
+  const openCount = recognized.filter(r => !r.isPaidOff).length;
+  // Pengampunan: hanya utk klaim yang "Dianggap Lunas" & punya nilai diklaim -> selisih (sistem - klaim).
+  const totalForgiveness = recognized.reduce(
+    (s, r) => (r.isPaidOff && r.claimValue !== undefined ? s + (r.systemValue - r.claimValue) : s),
+    0
+  );
 
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center text-zinc-400 text-sm">Memuat...</div>;
@@ -164,7 +190,7 @@ export function StockOpnamePage() {
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         {/* Ringkasan */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           <div className="bg-white rounded-xl border border-zinc-200 p-4">
             <p className="text-xs text-zinc-500">Nilai Sistem</p>
             <p className="text-lg font-bold text-zinc-900">{formatRupiah(totalSystem)}</p>
@@ -178,8 +204,15 @@ export function StockOpnamePage() {
             <p className="text-lg font-bold text-emerald-600">{formatRupiah(totalPaid)}</p>
           </div>
           <div className="bg-white rounded-xl border border-zinc-200 p-4">
+            <p className="text-xs text-sky-600">Pengampunan</p>
+            <p className="text-lg font-bold text-sky-600">{formatRupiah(totalForgiveness)}</p>
+          </div>
+          <div className="bg-white rounded-xl border border-zinc-200 p-4">
             <p className="text-xs text-amber-600">Klaim Terbuka</p>
             <p className="text-lg font-bold text-amber-600">{openCount}</p>
+            {notRecognizedCount > 0 && (
+              <p className="text-[11px] text-zinc-400 mt-0.5">{notRecognizedCount} tidak diakui (di luar total)</p>
+            )}
           </div>
         </div>
 
@@ -205,9 +238,9 @@ export function StockOpnamePage() {
             </select>
           )}
           <button
-            disabled
-            title="Segera hadir: upload data selisih dari file"
-            className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 bg-white border border-zinc-200 text-zinc-400 rounded-lg cursor-not-allowed whitespace-nowrap"
+            onClick={() => setIsImportOpen(true)}
+            title="Upload file reconciliation selisih stock"
+            className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 bg-white border border-zinc-200 text-zinc-600 rounded-lg hover:bg-zinc-50 whitespace-nowrap"
           >
             <Upload className="w-3.5 h-3.5" />
             Upload File
@@ -237,24 +270,38 @@ export function StockOpnamePage() {
             const paid = r.installments.reduce((s, i) => s + i.amount, 0);
             const base = r.claimValue ?? r.systemValue;
             const sisa = Math.max(base - paid, 0);
+            const forgiveness = r.isPaidOff && r.claimValue !== undefined ? r.systemValue - r.claimValue : 0;
             return (
-              <div key={r.id} className="bg-white rounded-xl border border-zinc-200 p-4 flex items-center gap-3">
+              <div key={r.id} className={`bg-white rounded-xl border p-4 flex items-center gap-3 ${r.isNotRecognized ? 'border-zinc-200 opacity-60' : 'border-zinc-200'}`}>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-semibold text-zinc-900 truncate">{r.itemName}</p>
                     <span className="text-xs text-zinc-400 bg-zinc-100 px-1.5 py-0.5 rounded">{r.period}</span>
-                    {r.isPaidOff && (
+                    {r.isNotRecognized ? (
+                      <span className="flex items-center gap-1 text-xs font-medium text-zinc-500 bg-zinc-100 px-2 py-0.5 rounded-full">
+                        <Ban className="w-3 h-3" /> Tidak Diakui
+                      </span>
+                    ) : r.isPaidOff && (
                       <span className="flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
                         <CheckCircle2 className="w-3 h-3" /> Lunas/Cukup
                       </span>
                     )}
                   </div>
                   <p className="text-xs text-zinc-500 truncate">{r.name} · {r.branch}{r.qtySelisih ? ` · ${r.qtySelisih} pcs` : ''}</p>
-                  <div className="flex items-center gap-3 mt-1 text-xs flex-wrap">
-                    <span className="text-zinc-500">Klaim: <b className="text-zinc-800">{formatRupiah(base)}</b></span>
-                    <span className="text-emerald-600">Dibayar: <b>{formatRupiah(paid)}</b></span>
-                    {!r.isPaidOff && sisa > 0 && <span className="text-amber-600">Sisa: <b>{formatRupiah(sisa)}</b></span>}
-                  </div>
+                  {r.isNotRecognized ? (
+                    <p className="text-xs text-zinc-400 mt-1">Diabaikan dari total claim (nilai sistem {formatRupiah(r.systemValue)})</p>
+                  ) : (
+                    <div className="flex items-center gap-3 mt-1 text-xs flex-wrap">
+                      <span className="text-zinc-500">Klaim: <b className="text-zinc-800">{formatRupiah(base)}</b></span>
+                      <span className="text-emerald-600">Dibayar: <b>{formatRupiah(paid)}</b></span>
+                      {!r.isPaidOff && sisa > 0 && <span className="text-amber-600">Sisa: <b>{formatRupiah(sisa)}</b></span>}
+                      {r.isPaidOff && forgiveness !== 0 && (
+                        <span className="flex items-center gap-1 text-sky-600">
+                          <HeartHandshake className="w-3 h-3" /> Pengampunan: <b>{formatRupiah(forgiveness)}</b>
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   {r.isPaidOff ? (
@@ -317,6 +364,13 @@ export function StockOpnamePage() {
           records={records}
           onBulkSettle={handleBulkSettle}
           onClose={() => setIsPayoffOpen(false)}
+        />
+      )}
+
+      {isImportOpen && (
+        <StockImportModal
+          onImport={handleImport}
+          onClose={() => setIsImportOpen(false)}
         />
       )}
     </div>

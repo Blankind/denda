@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Trash2, Plus } from 'lucide-react';
+import { X, Trash2, Plus, HeartHandshake } from 'lucide-react';
 import { StockOpnameRecord } from '../types';
 
 interface InstallmentModalProps {
@@ -14,6 +14,7 @@ const formatRupiah = (amount: number) =>
 export function InstallmentModal({ record, onSave, onClose }: InstallmentModalProps) {
   const [installments, setInstallments] = useState(record.installments || []);
   const [isPaidOff, setIsPaidOff] = useState(record.isPaidOff || false);
+  const [isNotRecognized, setIsNotRecognized] = useState(record.isNotRecognized || false);
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [note, setNote] = useState('');
@@ -22,6 +23,18 @@ export function InstallmentModal({ record, onSave, onClose }: InstallmentModalPr
   const baseValue = record.claimValue ?? record.systemValue;
   const totalPaid = installments.reduce((s, i) => s + i.amount, 0);
   const sisa = baseValue - totalPaid;
+  // Pengampunan: hanya berlaku saat "Dianggap Lunas" & nilai klaim sudah ditentukan berbeda dari nilai sistem.
+  const forgiveness = isPaidOff && record.claimValue !== undefined ? record.systemValue - record.claimValue : 0;
+
+  const handleToggleNotRecognized = (checked: boolean) => {
+    setIsNotRecognized(checked);
+    if (checked) setIsPaidOff(false); // dua status ini saling meniadakan
+  };
+
+  const handleTogglePaidOff = (checked: boolean) => {
+    setIsPaidOff(checked);
+    if (checked) setIsNotRecognized(false);
+  };
 
   const addInstallment = () => {
     const num = Number(amount);
@@ -36,7 +49,7 @@ export function InstallmentModal({ record, onSave, onClose }: InstallmentModalPr
   };
 
   const handleSave = () => {
-    onSave({ ...record, installments, isPaidOff });
+    onSave({ ...record, installments, isPaidOff, isNotRecognized });
     onClose();
   };
 
@@ -82,8 +95,24 @@ export function InstallmentModal({ record, onSave, onClose }: InstallmentModalPr
             </p>
           )}
 
+          {isNotRecognized && (
+            <p className="text-xs text-zinc-500 bg-zinc-100 rounded-lg p-2.5">
+              Klaim ini ditandai <b>Tidak Diakui</b> — diabaikan sepenuhnya, tidak dihitung ke total claim manapun.
+            </p>
+          )}
+
+          {!isNotRecognized && isPaidOff && forgiveness !== 0 && (
+            <div className="flex items-center gap-2 text-sm bg-sky-50 rounded-lg p-3">
+              <HeartHandshake className="w-4 h-4 text-sky-600 shrink-0" />
+              <div>
+                <p className="text-xs text-sky-700">Pengampunan (nilai sistem − nilai diklaim)</p>
+                <p className="font-semibold text-sky-700">{formatRupiah(forgiveness)}</p>
+              </div>
+            </div>
+          )}
+
           {/* Riwayat angsuran */}
-          <div>
+          <div className={isNotRecognized ? 'opacity-40 pointer-events-none' : ''}>
             <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-2">Riwayat Angsuran</p>
             {installments.length === 0 && (
               <p className="text-sm text-zinc-400 text-center py-3">Belum ada angsuran.</p>
@@ -106,7 +135,7 @@ export function InstallmentModal({ record, onSave, onClose }: InstallmentModalPr
           </div>
 
           {/* Tambah angsuran baru */}
-          <div className="border border-zinc-200 rounded-lg p-3 space-y-2">
+          <div className={`border border-zinc-200 rounded-lg p-3 space-y-2 ${isNotRecognized ? 'opacity-40 pointer-events-none' : ''}`}>
             <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Tambah Angsuran</p>
             <div className="grid grid-cols-2 gap-2">
               <input
@@ -141,15 +170,27 @@ export function InstallmentModal({ record, onSave, onClose }: InstallmentModalPr
           </div>
 
           {/* Centang lunas manual */}
-          <label className="flex items-center gap-2 text-sm bg-zinc-50 rounded-lg p-3 cursor-pointer">
+          <label className={`flex items-center gap-2 text-sm bg-zinc-50 rounded-lg p-3 cursor-pointer ${isNotRecognized ? 'opacity-40 pointer-events-none' : ''}`}>
             <input
               type="checkbox"
               checked={isPaidOff}
-              onChange={e => setIsPaidOff(e.target.checked)}
+              onChange={e => handleTogglePaidOff(e.target.checked)}
               className="w-4 h-4 rounded border-zinc-300 accent-emerald-600"
             />
-            <span className="font-medium text-zinc-800">Tandai Lunas</span>
-            <span className="text-xs text-zinc-400">(bisa dicentang manual meski sisa belum 0, sesuai keputusan atasan)</span>
+            <span className="font-medium text-zinc-800">Dianggap Lunas</span>
+            <span className="text-xs text-zinc-400">(bisa dicentang manual meski sisa belum 0, sesuai keputusan atasan; selisih ke nilai sistem jadi pengampunan)</span>
+          </label>
+
+          {/* Centang tidak diakui */}
+          <label className="flex items-center gap-2 text-sm bg-zinc-50 rounded-lg p-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isNotRecognized}
+              onChange={e => handleToggleNotRecognized(e.target.checked)}
+              className="w-4 h-4 rounded border-zinc-300 accent-zinc-900"
+            />
+            <span className="font-medium text-zinc-800">Tidak Diakui sebagai Claim</span>
+            <span className="text-xs text-zinc-400">(diabaikan total, tidak dihitung ke total claim manapun)</span>
           </label>
         </div>
 

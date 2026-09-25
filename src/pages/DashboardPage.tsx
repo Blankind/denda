@@ -43,7 +43,7 @@ export function DashboardPage() {
       const dendaPaid = denda.filter(r => r.status === 'PAID').reduce((s, r) => s + r.amount, 0);
       const dendaUnpaid = dendaTotal - dendaPaid;
 
-      const stock = stockRecords.filter(r => r.branch === branch);
+      const stock = stockRecords.filter(r => r.branch === branch && !r.isNotRecognized);
       const stockClaim = stock.reduce((s, r) => s + (r.claimValue ?? r.systemValue), 0);
       const stockPaid = stock.reduce((s, r) => s + r.installments.reduce((a, i) => a + i.amount, 0), 0);
       const stockOpen = stock.filter(r => !r.isPaidOff).length;
