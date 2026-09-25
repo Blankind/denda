@@ -20,9 +20,10 @@ export async function ensureStockSheets(
   }
 
   const headers: Record<string, string[]> = {
-    'StockOpname!A1:M1': [
+    'StockOpname!A1:N1': [
       'id', 'createdAt', 'period', 'itemName', 'branch', 'name',
       'qtySelisih', 'systemValue', 'claimValue', 'installmentsJson', 'isPaidOff', 'description', 'isNotRecognized',
+      'historyRaw',
     ],
     'StockLogs!A1:D1': ['id', 'timestamp', 'action', 'details'],
   };

@@ -70,6 +70,7 @@ export function StockImportModal({ onImport, onClose }: StockImportModalProps) {
       isPaidOff: false,
       isNotRecognized: false,
       description: `Import dari file reconciliation${fileName ? ` (${fileName})` : ''}${r.sourceCase === 'NEW_CASE' ? ' — nilai case terakhir' : ''}`,
+      historyRaw: r.historyRaw || undefined,
     }));
     onImport(records);
     setIsSaving(false);

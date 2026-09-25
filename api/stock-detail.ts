@@ -19,6 +19,7 @@ function toRow(r: any) {
     r.isPaidOff ? 'TRUE' : 'FALSE',
     r.description || '',
     r.isNotRecognized ? 'TRUE' : 'FALSE',
+    r.historyRaw || '',
   ];
 }
 
@@ -43,7 +44,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       await sheets.spreadsheets.values.update({
         spreadsheetId,
-        range: `StockOpname!A${rowIndex + 1}:M${rowIndex + 1}`,
+        range: `StockOpname!A${rowIndex + 1}:N${rowIndex + 1}`,
         valueInputOption: 'USER_ENTERED',
         requestBody: { values: [toRow(req.body)] },
       });

@@ -32,6 +32,7 @@ export interface StockOpnameRecord {
   isPaidOff: boolean; // centang "Lunas/Cukup" -> menutup siklus klaim ini, pengampunan dihitung dari systemValue - claimValue
   isNotRecognized?: boolean; // centang "Tidak Diakui sebagai Claim" -> diabaikan, tidak dihitung ke total claim
   description?: string;
+  historyRaw?: string; // teks mentah kolom "History Reconciliation" dari file excel yang di-import, khusus item ini
 }
 
 export interface ActivityLog {

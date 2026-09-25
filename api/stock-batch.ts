@@ -3,7 +3,7 @@ import { getSheets } from './_sheets.js';
 import { ensureStockSheets } from './_stock-sheets.js';
 
 // Kolom sama dengan api/stock.ts: id | createdAt | period | itemName | branch | name |
-// qtySelisih | systemValue | claimValue | installmentsJson | isPaidOff | description | isNotRecognized
+// qtySelisih | systemValue | claimValue | installmentsJson | isPaidOff | description | isNotRecognized | historyRaw
 function toRow(r: any) {
   return [
     r.id,
@@ -19,6 +19,7 @@ function toRow(r: any) {
     r.isPaidOff ? 'TRUE' : 'FALSE',
     r.description || '',
     r.isNotRecognized ? 'TRUE' : 'FALSE',
+    r.historyRaw || '',
   ];
 }
 
@@ -44,7 +45,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       await sheets.spreadsheets.values.append({
         spreadsheetId,
-        range: 'StockOpname!A:M',
+        range: 'StockOpname!A:N',
         valueInputOption: 'USER_ENTERED',
         requestBody: { values: rows },
       });

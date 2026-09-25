@@ -23,6 +23,7 @@ export interface ParsedStockRow {
   sourceCase: 'SINGLE' | 'NEW_CASE'; // info saja, untuk preview
   rawNetto: number; // sebelum flip, untuk transparansi di preview
   rawValue: number; // sebelum flip
+  historyRaw: string; // isi mentah kolom "History Reconciliation" milik item ini (semua baris digabung)
 }
 
 // "433.380,48" -> 433380.48 | "9,500" -> 9.5 | "-3" -> -3
@@ -114,6 +115,7 @@ export function parseStockRevisionRows(rows: any[][]): ParsedStockRow[] {
         sourceCase,
         rawNetto,
         rawValue,
+        historyRaw: text,
       };
     });
 }

@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { PlusCircle, Search, Package, Pencil, Trash2, Wallet, Upload, CheckCircle2, RotateCcw, Wallet as WalletIcon, Ban, HeartHandshake } from 'lucide-react';
+import { PlusCircle, Search, Package, Pencil, Trash2, Wallet, Upload, CheckCircle2, RotateCcw, Wallet as WalletIcon, Ban, HeartHandshake, History as HistoryIcon } from 'lucide-react';
 import { StockOpnameRecord, ActivityLog } from '../types';
 import { StockOpnameForm } from '../components/StockOpnameForm';
 import { InstallmentModal } from '../components/InstallmentModal';
 import { ClaimPayoffModal } from '../components/ClaimPayoffModal';
 import { StockImportModal } from '../components/StockImportModal';
+import { HistoryModal } from '../components/HistoryModal';
 
 const formatRupiah = (amount: number) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
@@ -24,6 +25,7 @@ export function StockOpnamePage({ initialBranch }: StockOpnamePageProps = {}) {
   const [editing, setEditing] = useState<StockOpnameRecord | null>(null);
   const [seed, setSeed] = useState<Partial<StockOpnameRecord> | null>(null);
   const [installmentTarget, setInstallmentTarget] = useState<StockOpnameRecord | null>(null);
+  const [historyTarget, setHistoryTarget] = useState<StockOpnameRecord | null>(null);
   const [isPayoffOpen, setIsPayoffOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
 
@@ -319,6 +321,15 @@ export function StockOpnamePage({ initialBranch }: StockOpnamePageProps = {}) {
                   )}
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
+                  {r.historyRaw && (
+                    <button
+                      onClick={() => setHistoryTarget(r)}
+                      title="Lihat history dari file excel untuk item ini"
+                      className="p-2 rounded-lg text-zinc-500 hover:bg-zinc-100 hover:text-indigo-600"
+                    >
+                      <HistoryIcon className="w-4 h-4" />
+                    </button>
+                  )}
                   {r.isPaidOff ? (
                     <button
                       onClick={() => startNewCycle(r)}
@@ -386,6 +397,13 @@ export function StockOpnamePage({ initialBranch }: StockOpnamePageProps = {}) {
         <StockImportModal
           onImport={handleImport}
           onClose={() => setIsImportOpen(false)}
+        />
+      )}
+
+      {historyTarget && (
+        <HistoryModal
+          record={historyTarget}
+          onClose={() => setHistoryTarget(null)}
         />
       )}
     </div>
