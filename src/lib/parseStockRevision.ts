@@ -8,14 +8,15 @@
 // 2. Kalau item punya split "OLD CASE" + "NEW CASE" (case lama sudah selesai,
 //    lalu ada selisih baru) -> HANYA total NEW CASE (case terakhir) yang
 //    dipakai, bukan akumulasi OLD+NEW seperti yang tertulis di baris item.
-// 3. Sign flip: netto/value negatif (sistem kurang) -> jadi positif (nilai
-//    yang diklaimkan/ditagih). netto/value positif (sistem lebih) -> jadi
-//    negatif (pengurang/kredit).
+// 3. Qty selisih (Netto Akhir) TIDAK dibalik tandanya, dipakai apa adanya.
+// 4. Sign flip HANYA untuk Value: value negatif (sistem kurang) -> jadi
+//    positif (nilai yang diklaimkan/ditagih). value positif (sistem lebih)
+//    -> jadi negatif (pengurang/kredit).
 
 export interface ParsedStockRow {
   branch: string;
   itemName: string;
-  qtySelisih: number; // sudah di-flip tanda
+  qtySelisih: number; // tanda asli, tidak di-flip
   systemValue: number; // sudah di-flip tanda
   name: string; // PIC, diambil dari tag 👤 terakhir pada case yang dipakai; '' kalau tidak ada
   period: string; // YYYY-MM, dari tanggal terakhir pada case yang dipakai
@@ -106,7 +107,7 @@ export function parseStockRevisionRows(rows: any[][]): ParsedStockRow[] {
       return {
         branch: b.branch,
         itemName: b.itemName,
-        qtySelisih: -rawNetto,
+        qtySelisih: rawNetto,
         systemValue: -rawValue,
         name: picMatch ? picMatch[1] : '',
         period: dateMatch ? dateMatch[1].slice(0, 7) : '',
