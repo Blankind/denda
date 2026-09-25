@@ -3,7 +3,10 @@
   "buildCommand": "vite build",
   "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/api/records/batch", "destination": "/api/batch" },
+    { "source": "/api/records/delete-batch", "destination": "/api/delete-batch" },
+    { "source": "/api/records/:id", "destination": "/api/[id]?id=:id" },
+    { "source": "/api/stock/:id", "destination": "/api/stock-detail?id=:id" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }

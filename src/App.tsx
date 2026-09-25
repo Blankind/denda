@@ -6,9 +6,10 @@ import { OffenderSummaryTab } from './components/OffenderSummaryTab';
 import { PayoffModal } from './components/PayoffModal';
 import { PenaltyRecord, ActivityLog } from './types';
 import { exportToExcel } from './exportExcel';
-import { Download, ShieldAlert, TrendingDown, Users, List, Activity, Pencil, UserCheck, CheckCircle2, Clock } from 'lucide-react';
+import { Download, ShieldAlert, TrendingDown, Users, List, Activity, Pencil, UserCheck, CheckCircle2, Clock, LayoutGrid, Package } from 'lucide-react';
+import { StockOpnamePage } from './pages/StockOpnamePage';
 
-export default function App() {
+function DendaOperasionalApp() {
   const [records, setRecords] = useState<PenaltyRecord[]>([]);
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [editingRecord, setEditingRecord] = useState<PenaltyRecord | null>(null);
@@ -531,6 +532,36 @@ export default function App() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+export default function App() {
+  const [page, setPage] = useState<'denda' | 'stock'>('denda');
+
+  return (
+    <div>
+      <div className="bg-zinc-900 px-4 sm:px-6 py-2 flex items-center gap-2">
+        <button
+          onClick={() => setPage('denda')}
+          className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
+            page === 'denda' ? 'bg-white text-zinc-900' : 'text-zinc-300 hover:text-white'
+          }`}
+        >
+          <LayoutGrid className="w-3.5 h-3.5" />
+          Denda Operasional
+        </button>
+        <button
+          onClick={() => setPage('stock')}
+          className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
+            page === 'stock' ? 'bg-white text-zinc-900' : 'text-zinc-300 hover:text-white'
+          }`}
+        >
+          <Package className="w-3.5 h-3.5" />
+          Selisih Stock
+        </button>
+      </div>
+      {page === 'denda' ? <DendaOperasionalApp /> : <StockOpnamePage />}
     </div>
   );
 }
