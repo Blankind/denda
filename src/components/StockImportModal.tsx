@@ -121,8 +121,9 @@ export function StockImportModal({ onImport, onClose }: StockImportModalProps) {
 
               <p className="text-xs text-zinc-500 leading-relaxed">
                 Untuk item dengan riwayat OLD CASE + NEW CASE, nilai yang dipakai hanya total case
-                terakhir (bukan akumulasi). Nilai negatif di sistem otomatis dibalik jadi positif
-                (ditagih), dan nilai positif dibalik jadi negatif (pengurang).
+                terakhir (bukan akumulasi). Khusus nilai Rupiah (Value): sistem negatif otomatis
+                dibalik jadi positif (ditagih), positif dibalik jadi negatif (pengurang). Qty tetap
+                apa adanya, tidak dibalik.
               </p>
 
               <div>
