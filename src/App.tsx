@@ -3,6 +3,7 @@ import { RecordForm } from './components/RecordForm';
 import { RecordList } from './components/RecordList';
 import { ActivityLogList } from './components/ActivityLogList';
 import { OffenderSummaryTab } from './components/OffenderSummaryTab';
+import { PayoffModal } from './components/PayoffModal';
 import { PenaltyRecord, ActivityLog } from './types';
 import { exportToExcel } from './exportExcel';
 import { Download, ShieldAlert, TrendingDown, Users, List, Activity, Pencil, UserCheck, CheckCircle2, Clock } from 'lucide-react';
@@ -15,6 +16,7 @@ export default function App() {
   const [isConfigured, setIsConfigured] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isPayoffOpen, setIsPayoffOpen] = useState(false);
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
 
@@ -331,6 +333,13 @@ export default function App() {
               className="px-3 py-1.5 bg-zinc-50 border border-zinc-200 rounded-lg text-sm text-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-900"
             />
             <button
+              onClick={() => setIsPayoffOpen(true)}
+              className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 bg-zinc-900 text-white rounded-lg hover:bg-zinc-800 transition-colors whitespace-nowrap"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              Lunasi
+            </button>
+            <button
               onClick={() => exportToExcel(filteredRecords, filteredLogs, { start: filterStartDate, end: filterEndDate })}
               disabled={filteredRecords.length === 0}
               className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
@@ -495,6 +504,14 @@ export default function App() {
       >
         <Pencil className="w-6 h-6" />
       </button>
+
+      {isPayoffOpen && (
+        <PayoffModal
+          records={records}
+          onBulkPay={handleBulkPay}
+          onClose={() => setIsPayoffOpen(false)}
+        />
+      )}
 
       {/* Form Modal Overlay */}
       {isFormOpen && (
