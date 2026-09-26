@@ -18,6 +18,7 @@ import { getPeriodLabel } from './period';
 export interface ParsedStockRow {
   branch: string;
   itemName: string;
+  itemGroup: string;
   qtySelisih: number; // tanda asli, tidak di-flip
   systemValue: number; // sudah di-flip tanda
   name: string; // PIC, diambil dari tag 👤 terakhir pada case yang dipakai; '' kalau tidak ada
@@ -53,6 +54,7 @@ function findHeaderIndexes(header: any[]) {
   return {
     branch: idx('warehouse'),
     item: idx('item name'),
+    itemGroup: idx('item group'),
     history: idx('history reconciliation'),
     netto: idx('netto akhir'),
     value: idx('value'),
@@ -67,7 +69,7 @@ export function parseStockRevisionRows(rows: any[][]): ParsedStockRow[] {
     throw new Error('Format file tidak dikenali. Kolom Warehouse / Item Name / History Reconciliation tidak ditemukan.');
   }
 
-  type Block = { branch: string; itemName: string; lines: string[]; rawNetto: number; rawValue: number };
+  type Block = { branch: string; itemName: string; itemGroup: string; lines: string[]; rawNetto: number; rawValue: number };
   const blocks: Block[] = [];
 
   for (let i = 1; i < rows.length; i++) {
@@ -79,6 +81,7 @@ export function parseStockRevisionRows(rows: any[][]): ParsedStockRow[] {
       blocks.push({
         branch: String(branch),
         itemName: String(row[cols.item] ?? ''),
+        itemGroup: cols.itemGroup !== -1 ? String(row[cols.itemGroup] ?? '').trim() : '',
         lines: historyText ? [historyText] : [],
         rawNetto: cols.netto !== -1 ? Number(row[cols.netto] ?? 0) : 0,
         rawValue: cols.value !== -1 ? Number(row[cols.value] ?? 0) : 0,
@@ -110,6 +113,7 @@ export function parseStockRevisionRows(rows: any[][]): ParsedStockRow[] {
       return {
         branch: b.branch,
         itemName: b.itemName,
+        itemGroup: b.itemGroup,
         qtySelisih: rawNetto,
         systemValue: -rawValue,
         name: picMatch ? picMatch[1] : '',

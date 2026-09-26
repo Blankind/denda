@@ -1,0 +1,325 @@
+diff --git a/api/_stock-sheets.ts b/api/_stock-sheets.ts
+index b0933d9..dd95358 100644
+--- a/api/_stock-sheets.ts
++++ b/api/_stock-sheets.ts
+@@ -20,10 +20,10 @@ export async function ensureStockSheets(
+   }
+ 
+   const headers: Record<string, string[]> = {
+-    'StockOpname!A1:N1': [
++    'StockOpname!A1:O1': [
+       'id', 'createdAt', 'period', 'itemName', 'branch', 'name',
+       'qtySelisih', 'systemValue', 'claimValue', 'installmentsJson', 'isPaidOff', 'description', 'isNotRecognized',
+-      'historyRaw',
++      'historyRaw', 'itemGroup',
+     ],
+     'StockLogs!A1:D1': ['id', 'timestamp', 'action', 'details'],
+   };
+diff --git a/api/stock-detail.ts b/api/stock-detail.ts
+index 27e7062..a0a627d 100644
+--- a/api/stock-detail.ts
++++ b/api/stock-detail.ts
+@@ -20,6 +20,7 @@ function toRow(r: any) {
+     r.description || '',
+     r.isNotRecognized ? 'TRUE' : 'FALSE',
+     r.historyRaw || '',
++    r.itemGroup || '',
+   ];
+ }
+ 
+@@ -44,7 +45,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
+ 
+       await sheets.spreadsheets.values.update({
+         spreadsheetId,
+-        range: `StockOpname!A${rowIndex + 1}:N${rowIndex + 1}`,
++        range: `StockOpname!A${rowIndex + 1}:O${rowIndex + 1}`,
+         valueInputOption: 'USER_ENTERED',
+         requestBody: { values: [toRow(req.body)] },
+       });
+diff --git a/api/stock.ts b/api/stock.ts
+index 8ecd3cf..664b650 100644
+--- a/api/stock.ts
++++ b/api/stock.ts
+@@ -2,8 +2,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
+ import { getSheets } from './_sheets.js';
+ import { ensureStockSheets } from './_stock-sheets.js';
+ 
+-// Kolom: id | createdAt | period | itemName | branch | name | qtySelisih | systemValue | claimValue | installmentsJson | isPaidOff | description | isNotRecognized | historyRaw
+-const RANGE = 'StockOpname!A:N';
++// Kolom: id | createdAt | period | itemName | branch | name | qtySelisih | systemValue | claimValue | installmentsJson | isPaidOff | description | isNotRecognized | historyRaw | itemGroup
++const RANGE = 'StockOpname!A:O';
+ 
+ function parseRow(row: any[]) {
+   return {
+@@ -23,6 +23,7 @@ function parseRow(row: any[]) {
+     description: row[11] || '',
+     isNotRecognized: row[12] === 'TRUE' || row[12] === true,
+     historyRaw: row[13] || '',
++    itemGroup: row[14] || '',
+   };
+ }
+ 
+@@ -42,6 +43,7 @@ function toRow(r: any) {
+     r.description || '',
+     r.isNotRecognized ? 'TRUE' : 'FALSE',
+     r.historyRaw || '',
++    r.itemGroup || '',
+   ];
+ }
+ 
+diff --git a/src/components/ClaimPayoffModal.tsx b/src/components/ClaimPayoffModal.tsx
+index 8b2f831..486efde 100644
+--- a/src/components/ClaimPayoffModal.tsx
++++ b/src/components/ClaimPayoffModal.tsx
+@@ -28,10 +28,22 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
+ 
+   const open = useMemo(() => records.filter(r => !r.isPaidOff), [records]);
+ 
++  // Daftar opsi untuk filter (dari seluruh klaim terbuka)
++  const allBranches = useMemo(() => [...new Set(open.map(r => r.branch).filter(Boolean))].sort(), [open]);
++  const allItemGroups = useMemo(() => [...new Set(open.map(r => r.itemGroup).filter((g): g is string => Boolean(g)))].sort(), [open]);
++
+   // ---------- MODE: BAYAR PER CABANG (auto-alokasi ke klaim terbuka, tertua dulu) ----------
++  const [branchGroupFilter, setBranchGroupFilter] = useState('');
++  const [branchItemGroupFilter, setBranchItemGroupFilter] = useState('');
++
+   const branchGroups = useMemo(() => {
++    const filtered = open.filter(r => {
++      if (branchGroupFilter && r.branch !== branchGroupFilter) return false;
++      if (branchItemGroupFilter && r.itemGroup !== branchItemGroupFilter) return false;
++      return true;
++    });
+     const map = new Map<string, StockOpnameRecord[]>();
+-    for (const r of open) {
++    for (const r of filtered) {
+       if (!map.has(r.branch)) map.set(r.branch, []);
+       map.get(r.branch)!.push(r);
+     }
+@@ -41,13 +53,18 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
+         return { branch, items: sorted, totalSisa: sorted.reduce((s, r) => s + sisaOf(r), 0) };
+       })
+       .sort((a, b) => a.branch.localeCompare(b.branch));
+-  }, [open]);
++  }, [open, branchGroupFilter, branchItemGroupFilter]);
+ 
+   const [branchSelected, setBranchSelected] = useState('');
+   const [branchAmount, setBranchAmount] = useState('');
+ 
+   const activeBranchGroup = branchGroups.find(g => g.branch === branchSelected);
+ 
++  // Kalau cabang yang lagi dipilih hilang setelah filter berubah, reset pilihan.
++  if (branchSelected && !activeBranchGroup) {
++    setBranchSelected('');
++  }
++
+   const allocation = useMemo(() => {
+     const map = new Map<string, number>();
+     if (!activeBranchGroup) return map;
+@@ -84,6 +101,8 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
+ 
+   // ---------- MODE: PILIH ITEM MANUAL (untuk selesaikan 1 selisih item spesifik) ----------
+   const [query, setQuery] = useState('');
++  const [manualBranchFilter, setManualBranchFilter] = useState('');
++  const [manualItemGroupFilter, setManualItemGroupFilter] = useState('');
+   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+   const [manualMode, setManualMode] = useState<'full' | 'nominal'>('full');
+   const [manualAmount, setManualAmount] = useState('');
+@@ -92,14 +111,16 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
+     const q = query.trim().toLowerCase();
+     const map = new Map<string, StockOpnameRecord[]>();
+     for (const r of open) {
+-      if (q && !(r.itemName.toLowerCase().includes(q) || r.name.toLowerCase().includes(q) || r.branch.toLowerCase().includes(q))) continue;
++      if (manualBranchFilter && r.branch !== manualBranchFilter) continue;
++      if (manualItemGroupFilter && r.itemGroup !== manualItemGroupFilter) continue;
++      if (q && !(r.itemName.toLowerCase().includes(q) || r.name.toLowerCase().includes(q) || r.branch.toLowerCase().includes(q) || (r.itemGroup || '').toLowerCase().includes(q))) continue;
+       if (!map.has(r.branch)) map.set(r.branch, []);
+       map.get(r.branch)!.push(r);
+     }
+     return [...map.entries()]
+       .map(([branch, items]) => ({ branch, items: items.sort((a, b) => a.createdAt.localeCompare(b.createdAt)) }))
+       .sort((a, b) => a.branch.localeCompare(b.branch));
+-  }, [open, query]);
++  }, [open, query, manualBranchFilter, manualItemGroupFilter]);
+ 
+   const toggleOne = (id: string) => {
+     setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+@@ -175,6 +196,31 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
+         {tab === 'branch' && (
+           <>
+             <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-3">
++              <div className="grid grid-cols-2 gap-2.5">
++                <div>
++                  <label className="block text-xs font-medium text-zinc-500 mb-1">Filter Cabang</label>
++                  <select
++                    value={branchGroupFilter}
++                    onChange={e => setBranchGroupFilter(e.target.value)}
++                    className="w-full px-2.5 py-1.5 text-sm border border-zinc-300 rounded-lg bg-white"
++                  >
++                    <option value="">Semua cabang</option>
++                    {allBranches.map(b => <option key={b} value={b}>{b}</option>)}
++                  </select>
++                </div>
++                <div>
++                  <label className="block text-xs font-medium text-zinc-500 mb-1">Filter Item Group</label>
++                  <select
++                    value={branchItemGroupFilter}
++                    onChange={e => setBranchItemGroupFilter(e.target.value)}
++                    className="w-full px-2.5 py-1.5 text-sm border border-zinc-300 rounded-lg bg-white"
++                  >
++                    <option value="">Semua item group</option>
++                    {allItemGroups.map(g => <option key={g} value={g}>{g}</option>)}
++                  </select>
++                </div>
++              </div>
++
+               <div className="grid grid-cols-2 gap-2.5">
+                 <div>
+                   <label className="block text-xs font-medium text-zinc-500 mb-1">Cabang</label>
+@@ -206,7 +252,8 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
+ 
+               {activeBranchGroup && (
+                 <div className="text-xs text-zinc-500 bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5">
+-                  Total sisa terbuka di <b className="text-zinc-700">{activeBranchGroup.branch}</b>: {formatRupiah(activeBranchGroup.totalSisa)}
++                  Total sisa terbuka di <b className="text-zinc-700">{activeBranchGroup.branch}</b>
++                  {branchItemGroupFilter ? <> (item group <b className="text-zinc-700">{branchItemGroupFilter}</b>)</> : ''}: {formatRupiah(activeBranchGroup.totalSisa)}
+                 </div>
+               )}
+ 
+@@ -298,17 +345,35 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
+         {/* ===== TAB: ITEM SPESIFIK (manual, seperti sebelumnya) ===== */}
+         {tab === 'manual' && (
+           <>
+-            <div className="px-4 py-3 border-b border-zinc-200 shrink-0">
++            <div className="px-4 py-3 border-b border-zinc-200 shrink-0 space-y-2">
+               <div className="relative">
+                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                 <input
+                   autoFocus
+                   value={query}
+                   onChange={e => setQuery(e.target.value)}
+-                  placeholder="Cari item, nama PIC, atau cabang..."
++                  placeholder="Cari item, item group, nama PIC, atau cabang..."
+                   className="w-full pl-9 pr-3 py-1.5 text-sm border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                 />
+               </div>
++              <div className="grid grid-cols-2 gap-2">
++                <select
++                  value={manualBranchFilter}
++                  onChange={e => setManualBranchFilter(e.target.value)}
++                  className="w-full px-2.5 py-1.5 text-xs border border-zinc-300 rounded-lg bg-white"
++                >
++                  <option value="">Semua cabang</option>
++                  {allBranches.map(b => <option key={b} value={b}>{b}</option>)}
++                </select>
++                <select
++                  value={manualItemGroupFilter}
++                  onChange={e => setManualItemGroupFilter(e.target.value)}
++                  className="w-full px-2.5 py-1.5 text-xs border border-zinc-300 rounded-lg bg-white"
++                >
++                  <option value="">Semua item group</option>
++                  {allItemGroups.map(g => <option key={g} value={g}>{g}</option>)}
++                </select>
++              </div>
+             </div>
+ 
+             <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-2.5">
+@@ -344,7 +409,7 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
+                             className="w-3.5 h-3.5 rounded border-zinc-300 accent-zinc-900 shrink-0"
+                           />
+                           <span className="flex-1 min-w-0 text-zinc-600 truncate">
+-                            {item.itemName} <span className="text-zinc-400">· {item.name} · {item.period}</span>
++                            {item.itemName} <span className="text-zinc-400">{item.itemGroup ? `· ${item.itemGroup} ` : ''}· {item.name} · {item.period}</span>
+                           </span>
+                           <span className="text-zinc-900 font-medium whitespace-nowrap">{formatRupiah(sisaOf(item))}</span>
+                         </label>
+diff --git a/src/components/StockImportModal.tsx b/src/components/StockImportModal.tsx
+index 75ea5eb..e3242d8 100644
+--- a/src/components/StockImportModal.tsx
++++ b/src/components/StockImportModal.tsx
+@@ -60,6 +60,7 @@ export function StockImportModal({ onImport, onClose }: StockImportModalProps) {
+       createdAt: now,
+       period: period || r.period,
+       itemName: r.itemName,
++      itemGroup: r.itemGroup || undefined,
+       branch: r.branch,
+       name: r.name || '(belum ada PIC)',
+       qtySelisih: r.qtySelisih,
+@@ -153,7 +154,7 @@ export function StockImportModal({ onImport, onClose }: StockImportModalProps) {
+                   {rows.map((r, i) => (
+                     <div key={i} className="flex items-center gap-2 px-3 py-2 text-xs">
+                       <div className="flex-1 min-w-0">
+-                        <p className="font-medium text-zinc-800 truncate">{r.itemName}</p>
++                        <p className="font-medium text-zinc-800 truncate">{r.itemName}{r.itemGroup ? <span className="text-zinc-400 font-normal"> · {r.itemGroup}</span> : ''}</p>
+                         <p className="text-zinc-400 truncate">{r.branch} · {r.name || 'tanpa PIC'} · qty {r.qtySelisih}</p>
+                       </div>
+                       <span className={`font-semibold whitespace-nowrap ${r.systemValue >= 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+diff --git a/src/lib/parseStockRevision.ts b/src/lib/parseStockRevision.ts
+index 5399d1c..d6d93e0 100644
+--- a/src/lib/parseStockRevision.ts
++++ b/src/lib/parseStockRevision.ts
+@@ -18,6 +18,7 @@ import { getPeriodLabel } from './period';
+ export interface ParsedStockRow {
+   branch: string;
+   itemName: string;
++  itemGroup: string;
+   qtySelisih: number; // tanda asli, tidak di-flip
+   systemValue: number; // sudah di-flip tanda
+   name: string; // PIC, diambil dari tag 👤 terakhir pada case yang dipakai; '' kalau tidak ada
+@@ -53,6 +54,7 @@ function findHeaderIndexes(header: any[]) {
+   return {
+     branch: idx('warehouse'),
+     item: idx('item name'),
++    itemGroup: idx('item group'),
+     history: idx('history reconciliation'),
+     netto: idx('netto akhir'),
+     value: idx('value'),
+@@ -67,7 +69,7 @@ export function parseStockRevisionRows(rows: any[][]): ParsedStockRow[] {
+     throw new Error('Format file tidak dikenali. Kolom Warehouse / Item Name / History Reconciliation tidak ditemukan.');
+   }
+ 
+-  type Block = { branch: string; itemName: string; lines: string[]; rawNetto: number; rawValue: number };
++  type Block = { branch: string; itemName: string; itemGroup: string; lines: string[]; rawNetto: number; rawValue: number };
+   const blocks: Block[] = [];
+ 
+   for (let i = 1; i < rows.length; i++) {
+@@ -79,6 +81,7 @@ export function parseStockRevisionRows(rows: any[][]): ParsedStockRow[] {
+       blocks.push({
+         branch: String(branch),
+         itemName: String(row[cols.item] ?? ''),
++        itemGroup: cols.itemGroup !== -1 ? String(row[cols.itemGroup] ?? '').trim() : '',
+         lines: historyText ? [historyText] : [],
+         rawNetto: cols.netto !== -1 ? Number(row[cols.netto] ?? 0) : 0,
+         rawValue: cols.value !== -1 ? Number(row[cols.value] ?? 0) : 0,
+@@ -110,6 +113,7 @@ export function parseStockRevisionRows(rows: any[][]): ParsedStockRow[] {
+       return {
+         branch: b.branch,
+         itemName: b.itemName,
++        itemGroup: b.itemGroup,
+         qtySelisih: rawNetto,
+         systemValue: -rawValue,
+         name: picMatch ? picMatch[1] : '',
+diff --git a/src/pages/StockOpnamePage.tsx b/src/pages/StockOpnamePage.tsx
+index 42318cd..6b54681 100644
+--- a/src/pages/StockOpnamePage.tsx
++++ b/src/pages/StockOpnamePage.tsx
+@@ -69,7 +69,7 @@ export function StockOpnamePage({ initialBranch }: StockOpnamePageProps = {}) {
+       if (periodFilter && r.period !== periodFilter) return false;
+       if (hideNegative && r.systemValue < 0) return false;
+       if (!q) return true;
+-      return r.itemName.toLowerCase().includes(q) || r.name.toLowerCase().includes(q) || r.branch.toLowerCase().includes(q);
++      return r.itemName.toLowerCase().includes(q) || r.name.toLowerCase().includes(q) || r.branch.toLowerCase().includes(q) || (r.itemGroup || '').toLowerCase().includes(q);
+     });
+   }, [records, query, branchFilter, periodFilter, hideNegative]);
+ 
+diff --git a/src/types.ts b/src/types.ts
+index b555ea6..37bdef4 100644
+--- a/src/types.ts
++++ b/src/types.ts
+@@ -23,6 +23,7 @@ export interface StockOpnameRecord {
+   createdAt: string;
+   period: string; // format YYYY-MM, siklus klaim per bulan
+   itemName: string;
++  itemGroup?: string; // grup/kategori item, mis. STAINLESS
+   branch: string;
+   name: string; // PIC / karyawan penanggung jawab
+   qtySelisih?: number;

@@ -23,6 +23,7 @@ export interface StockOpnameRecord {
   createdAt: string;
   period: string; // format YYYY-MM, siklus klaim per bulan
   itemName: string;
+  itemGroup?: string; // grup/kategori item, mis. STAINLESS
   branch: string;
   name: string; // PIC / karyawan penanggung jawab
   qtySelisih?: number;

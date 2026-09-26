@@ -28,10 +28,22 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
 
   const open = useMemo(() => records.filter(r => !r.isPaidOff), [records]);
 
+  // Daftar opsi untuk filter (dari seluruh klaim terbuka)
+  const allBranches = useMemo(() => [...new Set(open.map(r => r.branch).filter(Boolean))].sort(), [open]);
+  const allItemGroups = useMemo(() => [...new Set(open.map(r => r.itemGroup).filter((g): g is string => Boolean(g)))].sort(), [open]);
+
   // ---------- MODE: BAYAR PER CABANG (auto-alokasi ke klaim terbuka, tertua dulu) ----------
+  const [branchGroupFilter, setBranchGroupFilter] = useState('');
+  const [branchItemGroupFilter, setBranchItemGroupFilter] = useState('');
+
   const branchGroups = useMemo(() => {
+    const filtered = open.filter(r => {
+      if (branchGroupFilter && r.branch !== branchGroupFilter) return false;
+      if (branchItemGroupFilter && r.itemGroup !== branchItemGroupFilter) return false;
+      return true;
+    });
     const map = new Map<string, StockOpnameRecord[]>();
-    for (const r of open) {
+    for (const r of filtered) {
       if (!map.has(r.branch)) map.set(r.branch, []);
       map.get(r.branch)!.push(r);
     }
@@ -41,12 +53,17 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
         return { branch, items: sorted, totalSisa: sorted.reduce((s, r) => s + sisaOf(r), 0) };
       })
       .sort((a, b) => a.branch.localeCompare(b.branch));
-  }, [open]);
+  }, [open, branchGroupFilter, branchItemGroupFilter]);
 
   const [branchSelected, setBranchSelected] = useState('');
   const [branchAmount, setBranchAmount] = useState('');
 
   const activeBranchGroup = branchGroups.find(g => g.branch === branchSelected);
+
+  // Kalau cabang yang lagi dipilih hilang setelah filter berubah, reset pilihan.
+  if (branchSelected && !activeBranchGroup) {
+    setBranchSelected('');
+  }
 
   const allocation = useMemo(() => {
     const map = new Map<string, number>();
@@ -84,6 +101,8 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
 
   // ---------- MODE: PILIH ITEM MANUAL (untuk selesaikan 1 selisih item spesifik) ----------
   const [query, setQuery] = useState('');
+  const [manualBranchFilter, setManualBranchFilter] = useState('');
+  const [manualItemGroupFilter, setManualItemGroupFilter] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [manualMode, setManualMode] = useState<'full' | 'nominal'>('full');
   const [manualAmount, setManualAmount] = useState('');
@@ -92,14 +111,16 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
     const q = query.trim().toLowerCase();
     const map = new Map<string, StockOpnameRecord[]>();
     for (const r of open) {
-      if (q && !(r.itemName.toLowerCase().includes(q) || r.name.toLowerCase().includes(q) || r.branch.toLowerCase().includes(q))) continue;
+      if (manualBranchFilter && r.branch !== manualBranchFilter) continue;
+      if (manualItemGroupFilter && r.itemGroup !== manualItemGroupFilter) continue;
+      if (q && !(r.itemName.toLowerCase().includes(q) || r.name.toLowerCase().includes(q) || r.branch.toLowerCase().includes(q) || (r.itemGroup || '').toLowerCase().includes(q))) continue;
       if (!map.has(r.branch)) map.set(r.branch, []);
       map.get(r.branch)!.push(r);
     }
     return [...map.entries()]
       .map(([branch, items]) => ({ branch, items: items.sort((a, b) => a.createdAt.localeCompare(b.createdAt)) }))
       .sort((a, b) => a.branch.localeCompare(b.branch));
-  }, [open, query]);
+  }, [open, query, manualBranchFilter, manualItemGroupFilter]);
 
   const toggleOne = (id: string) => {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -177,6 +198,31 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
             <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-3">
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
+                  <label className="block text-xs font-medium text-zinc-500 mb-1">Filter Cabang</label>
+                  <select
+                    value={branchGroupFilter}
+                    onChange={e => setBranchGroupFilter(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-sm border border-zinc-300 rounded-lg bg-white"
+                  >
+                    <option value="">Semua cabang</option>
+                    {allBranches.map(b => <option key={b} value={b}>{b}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-zinc-500 mb-1">Filter Item Group</label>
+                  <select
+                    value={branchItemGroupFilter}
+                    onChange={e => setBranchItemGroupFilter(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-sm border border-zinc-300 rounded-lg bg-white"
+                  >
+                    <option value="">Semua item group</option>
+                    {allItemGroups.map(g => <option key={g} value={g}>{g}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
                   <label className="block text-xs font-medium text-zinc-500 mb-1">Cabang</label>
                   <select
                     value={branchSelected}
@@ -206,7 +252,8 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
 
               {activeBranchGroup && (
                 <div className="text-xs text-zinc-500 bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5">
-                  Total sisa terbuka di <b className="text-zinc-700">{activeBranchGroup.branch}</b>: {formatRupiah(activeBranchGroup.totalSisa)}
+                  Total sisa terbuka di <b className="text-zinc-700">{activeBranchGroup.branch}</b>
+                  {branchItemGroupFilter ? <> (item group <b className="text-zinc-700">{branchItemGroupFilter}</b>)</> : ''}: {formatRupiah(activeBranchGroup.totalSisa)}
                 </div>
               )}
 
@@ -298,16 +345,34 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
         {/* ===== TAB: ITEM SPESIFIK (manual, seperti sebelumnya) ===== */}
         {tab === 'manual' && (
           <>
-            <div className="px-4 py-3 border-b border-zinc-200 shrink-0">
+            <div className="px-4 py-3 border-b border-zinc-200 shrink-0 space-y-2">
               <div className="relative">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
                 <input
                   autoFocus
                   value={query}
                   onChange={e => setQuery(e.target.value)}
-                  placeholder="Cari item, nama PIC, atau cabang..."
+                  placeholder="Cari item, item group, nama PIC, atau cabang..."
                   className="w-full pl-9 pr-3 py-1.5 text-sm border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-zinc-900"
                 />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <select
+                  value={manualBranchFilter}
+                  onChange={e => setManualBranchFilter(e.target.value)}
+                  className="w-full px-2.5 py-1.5 text-xs border border-zinc-300 rounded-lg bg-white"
+                >
+                  <option value="">Semua cabang</option>
+                  {allBranches.map(b => <option key={b} value={b}>{b}</option>)}
+                </select>
+                <select
+                  value={manualItemGroupFilter}
+                  onChange={e => setManualItemGroupFilter(e.target.value)}
+                  className="w-full px-2.5 py-1.5 text-xs border border-zinc-300 rounded-lg bg-white"
+                >
+                  <option value="">Semua item group</option>
+                  {allItemGroups.map(g => <option key={g} value={g}>{g}</option>)}
+                </select>
               </div>
             </div>
 
@@ -344,7 +409,7 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
                             className="w-3.5 h-3.5 rounded border-zinc-300 accent-zinc-900 shrink-0"
                           />
                           <span className="flex-1 min-w-0 text-zinc-600 truncate">
-                            {item.itemName} <span className="text-zinc-400">· {item.name} · {item.period}</span>
+                            {item.itemName} <span className="text-zinc-400">{item.itemGroup ? `· ${item.itemGroup} ` : ''}· {item.name} · {item.period}</span>
                           </span>
                           <span className="text-zinc-900 font-medium whitespace-nowrap">{formatRupiah(sisaOf(item))}</span>
                         </label>

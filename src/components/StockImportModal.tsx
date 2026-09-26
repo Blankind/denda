@@ -60,6 +60,7 @@ export function StockImportModal({ onImport, onClose }: StockImportModalProps) {
       createdAt: now,
       period: period || r.period,
       itemName: r.itemName,
+      itemGroup: r.itemGroup || undefined,
       branch: r.branch,
       name: r.name || '(belum ada PIC)',
       qtySelisih: r.qtySelisih,
@@ -153,7 +154,7 @@ export function StockImportModal({ onImport, onClose }: StockImportModalProps) {
                   {rows.map((r, i) => (
                     <div key={i} className="flex items-center gap-2 px-3 py-2 text-xs">
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-zinc-800 truncate">{r.itemName}</p>
+                        <p className="font-medium text-zinc-800 truncate">{r.itemName}{r.itemGroup ? <span className="text-zinc-400 font-normal"> · {r.itemGroup}</span> : ''}</p>
                         <p className="text-zinc-400 truncate">{r.branch} · {r.name || 'tanpa PIC'} · qty {r.qtySelisih}</p>
                       </div>
                       <span className={`font-semibold whitespace-nowrap ${r.systemValue >= 0 ? 'text-rose-600' : 'text-emerald-600'}`}>

@@ -69,7 +69,7 @@ export function StockOpnamePage({ initialBranch }: StockOpnamePageProps = {}) {
       if (periodFilter && r.period !== periodFilter) return false;
       if (hideNegative && r.systemValue < 0) return false;
       if (!q) return true;
-      return r.itemName.toLowerCase().includes(q) || r.name.toLowerCase().includes(q) || r.branch.toLowerCase().includes(q);
+      return r.itemName.toLowerCase().includes(q) || r.name.toLowerCase().includes(q) || r.branch.toLowerCase().includes(q) || (r.itemGroup || '').toLowerCase().includes(q);
     });
   }, [records, query, branchFilter, periodFilter, hideNegative]);
 

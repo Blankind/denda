@@ -2,8 +2,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getSheets } from './_sheets.js';
 import { ensureStockSheets } from './_stock-sheets.js';
 
-// Kolom: id | createdAt | period | itemName | branch | name | qtySelisih | systemValue | claimValue | installmentsJson | isPaidOff | description | isNotRecognized | historyRaw
-const RANGE = 'StockOpname!A:N';
+// Kolom: id | createdAt | period | itemName | branch | name | qtySelisih | systemValue | claimValue | installmentsJson | isPaidOff | description | isNotRecognized | historyRaw | itemGroup
+const RANGE = 'StockOpname!A:O';
 
 function parseRow(row: any[]) {
   return {
@@ -23,6 +23,7 @@ function parseRow(row: any[]) {
     description: row[11] || '',
     isNotRecognized: row[12] === 'TRUE' || row[12] === true,
     historyRaw: row[13] || '',
+    itemGroup: row[14] || '',
   };
 }
 
@@ -42,6 +43,7 @@ function toRow(r: any) {
     r.description || '',
     r.isNotRecognized ? 'TRUE' : 'FALSE',
     r.historyRaw || '',
+    r.itemGroup || '',
   ];
 }
 
