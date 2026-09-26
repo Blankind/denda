@@ -136,13 +136,15 @@ export function StockOpnamePage({ initialBranch }: StockOpnamePageProps = {}) {
 
     if (!isConfigured) return;
     try {
-      await Promise.all(updated.map(r =>
-        fetch(`/api/stock/${r.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(r),
-        })
-      ));
+      const res = await fetch('/api/stock-bulk', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated),
+      });
+      const result = await res.json();
+      if (!res.ok || result.missing?.length) {
+        alert('Beberapa pembaruan mungkin gagal tersimpan ke Spreadsheet.');
+      }
     } catch {
       alert('Beberapa pembaruan mungkin gagal tersimpan ke Spreadsheet.');
     }
@@ -179,13 +181,15 @@ export function StockOpnamePage({ initialBranch }: StockOpnamePageProps = {}) {
 
     if (isConfigured) {
       try {
-        await Promise.all(updated.map(r =>
-          fetch(`/api/stock/${r.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(r),
-          })
-        ));
+        const res = await fetch('/api/stock-bulk', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updated),
+        });
+        const result = await res.json();
+        if (!res.ok || result.missing?.length) {
+          alert('Beberapa pembaruan mungkin gagal tersimpan ke Spreadsheet.');
+        }
       } catch {
         alert('Beberapa pembaruan mungkin gagal tersimpan ke Spreadsheet.');
       }
