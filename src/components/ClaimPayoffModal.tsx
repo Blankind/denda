@@ -39,6 +39,21 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
   const [branchGroupFilter, setBranchGroupFilter] = useState('');
   const [branchItemGroupFilter, setBranchItemGroupFilter] = useState('');
 
+  // Statistik per item group (jumlah kasus & total sisa) buat ditampilin di dropdown filter,
+  // mengikuti Filter Cabang yang lagi aktif kalau ada.
+  const branchItemGroupStats = useMemo(() => {
+    const base = branchGroupFilter ? open.filter(r => r.branch === branchGroupFilter) : open;
+    const map = new Map<string, { count: number; total: number }>();
+    for (const r of base) {
+      if (!r.itemGroup) continue;
+      const cur = map.get(r.itemGroup) || { count: 0, total: 0 };
+      cur.count += 1;
+      cur.total += sisaOf(r);
+      map.set(r.itemGroup, cur);
+    }
+    return map;
+  }, [open, branchGroupFilter]);
+
   const branchGroups = useMemo(() => {
     const filtered = open.filter(r => {
       if (branchGroupFilter && r.branch !== branchGroupFilter) return false;
@@ -117,6 +132,7 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
       if (manualBranchFilter && r.branch !== manualBranchFilter) continue;
       if (manualItemGroupFilter && r.itemGroup !== manualItemGroupFilter) continue;
       if (q && !(r.itemName.toLowerCase().includes(q) || r.name.toLowerCase().includes(q) || r.branch.toLowerCase().includes(q) || (r.itemGroup || '').toLowerCase().includes(q))) continue;
+      if (sisaOf(r) === 0) continue; // gak ada denda buat dilunasi, cuma habisin slot
       if (!map.has(r.branch)) map.set(r.branch, []);
       map.get(r.branch)!.push(r);
     }
@@ -219,7 +235,14 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
                     className="w-full px-2.5 py-1.5 text-sm border border-zinc-300 rounded-lg bg-white"
                   >
                     <option value="">Semua item group</option>
-                    {allItemGroups.map(g => <option key={g} value={g}>{g}</option>)}
+                    {allItemGroups.map(g => {
+                      const stat = branchItemGroupStats.get(g);
+                      return (
+                        <option key={g} value={g}>
+                          {g}{stat ? ` — ${stat.count} kasus · ${formatRupiah(stat.total)}` : ''}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
                 <div>
