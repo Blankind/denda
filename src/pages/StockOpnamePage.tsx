@@ -22,6 +22,7 @@ export function StockOpnamePage({ initialBranch }: StockOpnamePageProps = {}) {
   const [query, setQuery] = useState('');
   const [branchFilter, setBranchFilter] = useState(initialBranch || '');
   const [periodFilter, setPeriodFilter] = useState('');
+  const [itemGroupFilter, setItemGroupFilter] = useState('');
   const [hideNegative, setHideNegative] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editing, setEditing] = useState<StockOpnameRecord | null>(null);
@@ -64,17 +65,25 @@ export function StockOpnamePage({ initialBranch }: StockOpnamePageProps = {}) {
     const set = new Set<string>(records.map(r => r.period).filter((p): p is string => Boolean(p)));
     return [...set].sort((a, b) => periodSortKey(b) - periodSortKey(a));
   }, [records]);
+  const itemGroups = useMemo(
+    () => [...new Set(records.map(r => r.itemGroup).filter((g): g is string => Boolean(g)))].sort(),
+    [records]
+  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return records.filter(r => {
       if (branchFilter && r.branch !== branchFilter) return false;
       if (periodFilter && r.period !== periodFilter) return false;
-      if (hideNegative && r.systemValue < 0) return false;
+      if (itemGroupFilter && r.itemGroup !== itemGroupFilter) return false;
+      // "Abaikan nilai minus" = sembunyikan kasus surplus/kredit: qty selisih plus TAPI value-nya minus
+      // (logic fix: qty minus -> value plus [klaim ditagih], qty plus -> value minus [pengurang]).
+      // Cuma kombinasi qty+ & value- yang disembunyikan, bukan sembarang value negatif.
+      if (hideNegative && (r.qtySelisih ?? 0) > 0 && r.systemValue < 0) return false;
       if (!q) return true;
       return r.itemName.toLowerCase().includes(q) || r.name.toLowerCase().includes(q) || r.branch.toLowerCase().includes(q) || (r.itemGroup || '').toLowerCase().includes(q);
     });
-  }, [records, query, branchFilter, periodFilter, hideNegative]);
+  }, [records, query, branchFilter, periodFilter, itemGroupFilter, hideNegative]);
 
   const handleSave = async (data: StockOpnameRecord) => {
     const exists = records.some(r => r.id === data.id);
@@ -310,6 +319,16 @@ export function StockOpnamePage({ initialBranch }: StockOpnamePageProps = {}) {
             >
               <option value="">Semua Periode</option>
               {periods.map(p => <option key={p} value={p}>Periode {p}</option>)}
+            </select>
+          )}
+          {itemGroups.length > 0 && (
+            <select
+              value={itemGroupFilter}
+              onChange={e => setItemGroupFilter(e.target.value)}
+              className="px-3 py-2 text-sm border border-zinc-300 rounded-lg bg-white"
+            >
+              <option value="">Semua Item Group</option>
+              {itemGroups.map(g => <option key={g} value={g}>{g}</option>)}
             </select>
           )}
           <label className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 bg-white border border-zinc-300 rounded-lg text-zinc-600 cursor-pointer whitespace-nowrap select-none">
