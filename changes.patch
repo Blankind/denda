@@ -68,7 +68,7 @@ index 8ecd3cf..664b650 100644
  }
  
 diff --git a/src/components/ClaimPayoffModal.tsx b/src/components/ClaimPayoffModal.tsx
-index 8b2f831..486efde 100644
+index 8b2f831..a1fa8b0 100644
 --- a/src/components/ClaimPayoffModal.tsx
 +++ b/src/components/ClaimPayoffModal.tsx
 @@ -28,10 +28,22 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
@@ -143,11 +143,48 @@ index 8b2f831..486efde 100644
  
    const toggleOne = (id: string) => {
      setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-@@ -175,6 +196,31 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
+@@ -134,16 +155,16 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
+ 
+   return (
+     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl h-[92vh] max-h-[820px] flex flex-col">
+-        <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-200 shrink-0">
+-          <h2 className="text-lg font-bold text-zinc-900">Lunasi Klaim Selisih Stock</h2>
++      <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl h-[92vh] max-h-[820px] flex flex-col">
++        <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-200 shrink-0">
++          <h2 className="text-base font-bold text-zinc-900">Lunasi Klaim Selisih Stock</h2>
+           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-zinc-100 text-zinc-500">
+             <X className="w-5 h-5" />
+           </button>
+         </div>
+ 
+         {/* Tab Switcher */}
+-        <div className="px-4 pt-3 shrink-0">
++        <div className="px-4 pt-2.5 shrink-0">
+           <div className="grid grid-cols-2 gap-1.5 bg-zinc-100 p-1 rounded-xl">
+             <button
+               type="button"
+@@ -164,18 +185,40 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
+               <ListChecks className="w-4 h-4" /> Item Spesifik
+             </button>
+           </div>
+-          <p className="text-xs text-zinc-400 mt-1.5 leading-snug">
++          <p className="text-[11px] text-zinc-400 mt-1 leading-snug line-clamp-1">
+             {tab === 'branch'
+-              ? 'Cukup pilih cabang & total nominal yang dibayar — sistem otomatis alokasikan ke klaim terbuka di cabang itu (yang paling lama diselesaikan lebih dulu). Tidak perlu tunjuk item satu-satu.'
+-              : 'Pakai ini kalau memang mau menyelesaikan selisih 1 item tertentu saja, terlepas dari klaim lain di cabang yang sama.'}
++              ? 'Pilih cabang & nominal — sistem otomatis alokasikan ke klaim terbuka (tertua dulu).'
++              : 'Selesaikan selisih 1 item tertentu saja, terlepas dari klaim lain di cabang yang sama.'}
+           </p>
+         </div>
+ 
+         {/* ===== TAB: BAYAR CABANG ===== */}
          {tab === 'branch' && (
            <>
-             <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-3">
-+              <div className="grid grid-cols-2 gap-2.5">
+-            <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-3">
+-              <div className="grid grid-cols-2 gap-2.5">
++            <div className="flex-1 min-h-0 overflow-y-auto px-4 py-2.5 space-y-2.5">
++              <div className="grid grid-cols-4 gap-2.5">
 +                <div>
 +                  <label className="block text-xs font-medium text-zinc-500 mb-1">Filter Cabang</label>
 +                  <select
@@ -170,12 +207,10 @@ index 8b2f831..486efde 100644
 +                    {allItemGroups.map(g => <option key={g} value={g}>{g}</option>)}
 +                  </select>
 +                </div>
-+              </div>
-+
-               <div className="grid grid-cols-2 gap-2.5">
                  <div>
                    <label className="block text-xs font-medium text-zinc-500 mb-1">Cabang</label>
-@@ -206,7 +252,8 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
+                   <select
+@@ -206,7 +249,8 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
  
                {activeBranchGroup && (
                  <div className="text-xs text-zinc-500 bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5">
@@ -185,28 +220,36 @@ index 8b2f831..486efde 100644
                  </div>
                )}
  
-@@ -298,17 +345,35 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
+@@ -298,20 +342,38 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
          {/* ===== TAB: ITEM SPESIFIK (manual, seperti sebelumnya) ===== */}
          {tab === 'manual' && (
            <>
 -            <div className="px-4 py-3 border-b border-zinc-200 shrink-0">
-+            <div className="px-4 py-3 border-b border-zinc-200 shrink-0 space-y-2">
-               <div className="relative">
-                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
-                 <input
-                   autoFocus
-                   value={query}
-                   onChange={e => setQuery(e.target.value)}
+-              <div className="relative">
+-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+-                <input
+-                  autoFocus
+-                  value={query}
+-                  onChange={e => setQuery(e.target.value)}
 -                  placeholder="Cari item, nama PIC, atau cabang..."
-+                  placeholder="Cari item, item group, nama PIC, atau cabang..."
-                   className="w-full pl-9 pr-3 py-1.5 text-sm border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-zinc-900"
-                 />
-               </div>
-+              <div className="grid grid-cols-2 gap-2">
+-                  className="w-full pl-9 pr-3 py-1.5 text-sm border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-zinc-900"
+-                />
++            <div className="px-4 py-2.5 border-b border-zinc-200 shrink-0">
++              <div className="flex gap-2">
++                <div className="relative flex-1 min-w-0">
++                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
++                  <input
++                    autoFocus
++                    value={query}
++                    onChange={e => setQuery(e.target.value)}
++                    placeholder="Cari item, item group, PIC, atau cabang..."
++                    className="w-full pl-9 pr-3 py-1.5 text-sm border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-zinc-900"
++                  />
++                </div>
 +                <select
 +                  value={manualBranchFilter}
 +                  onChange={e => setManualBranchFilter(e.target.value)}
-+                  className="w-full px-2.5 py-1.5 text-xs border border-zinc-300 rounded-lg bg-white"
++                  className="w-40 shrink-0 px-2 py-1.5 text-xs border border-zinc-300 rounded-lg bg-white"
 +                >
 +                  <option value="">Semua cabang</option>
 +                  {allBranches.map(b => <option key={b} value={b}>{b}</option>)}
@@ -214,16 +257,20 @@ index 8b2f831..486efde 100644
 +                <select
 +                  value={manualItemGroupFilter}
 +                  onChange={e => setManualItemGroupFilter(e.target.value)}
-+                  className="w-full px-2.5 py-1.5 text-xs border border-zinc-300 rounded-lg bg-white"
++                  className="w-40 shrink-0 px-2 py-1.5 text-xs border border-zinc-300 rounded-lg bg-white"
 +                >
 +                  <option value="">Semua item group</option>
 +                  {allItemGroups.map(g => <option key={g} value={g}>{g}</option>)}
 +                </select>
-+              </div>
+               </div>
              </div>
  
-             <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-2.5">
-@@ -344,7 +409,7 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
+-            <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-2.5">
++            <div className="flex-1 min-h-0 overflow-y-auto px-4 py-2.5 space-y-2.5">
+               {manualGroups.length === 0 && (
+                 <p className="text-sm text-zinc-500 text-center py-8">
+                   {open.length === 0 ? 'Tidak ada klaim yang masih terbuka.' : 'Tidak ada item yang cocok.'}
+@@ -344,7 +406,7 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
                              className="w-3.5 h-3.5 rounded border-zinc-300 accent-zinc-900 shrink-0"
                            />
                            <span className="flex-1 min-w-0 text-zinc-600 truncate">
