@@ -1,8 +1,9 @@
 import { useState, FormEvent } from 'react';
 import { X } from 'lucide-react';
 import { StockOpnameRecord } from '../types';
+import { getPeriodLabel, getPeriodRangeLabel } from '../lib/period';
 
-const currentPeriod = () => new Date().toISOString().slice(0, 7); // YYYY-MM
+const today = () => new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
 interface StockOpnameFormProps {
   initial: StockOpnameRecord | null;
@@ -17,7 +18,8 @@ export function StockOpnameForm({ initial, seed, onSave, onClose }: StockOpnameF
   const [itemName, setItemName] = useState(base?.itemName || '');
   const [branch, setBranch] = useState(base?.branch || '');
   const [name, setName] = useState(base?.name || '');
-  const [period, setPeriod] = useState(initial?.period || currentPeriod());
+  const [periodDate, setPeriodDate] = useState(today());
+  const [period, setPeriod] = useState(initial?.period || getPeriodLabel(today()));
   const [qtySelisih, setQtySelisih] = useState(initial?.qtySelisih?.toString() || '');
   const [systemValue, setSystemValue] = useState(initial?.systemValue?.toString() || '');
   const [claimValue, setClaimValue] = useState(initial?.claimValue?.toString() || '');
@@ -98,14 +100,17 @@ export function StockOpnameForm({ initial, seed, onSave, onClose }: StockOpnameF
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-zinc-500 mb-1">Periode (Bulan Denda)</label>
+              <label className="block text-xs font-medium text-zinc-500 mb-1">Tanggal Selisih / Opname</label>
               <input
-                type="month"
+                type="date"
                 required
-                value={period}
-                onChange={e => setPeriod(e.target.value)}
+                value={periodDate}
+                onChange={e => { setPeriodDate(e.target.value); setPeriod(getPeriodLabel(e.target.value)); }}
                 className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-lg"
               />
+              <p className="text-xs text-zinc-500 mt-1">
+                Masuk <b className="text-zinc-700">Periode {period}</b> ({getPeriodRangeLabel(period)})
+              </p>
             </div>
 
             <div className="grid grid-cols-2 gap-3">

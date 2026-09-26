@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { X, Upload, AlertTriangle, FileSpreadsheet } from 'lucide-react';
 import { StockOpnameRecord } from '../types';
 import { parseStockRevisionFile, ParsedStockRow } from '../lib/parseStockRevision';
+import { periodSortKey } from '../lib/period';
 
 interface StockImportModalProps {
   onImport: (records: StockOpnameRecord[]) => void;
@@ -11,13 +12,9 @@ interface StockImportModalProps {
 const formatRupiah = (amount: number) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
 
-const mostCommonPeriod = (rows: ParsedStockRow[]) => {
-  const count = new Map<string, number>();
-  for (const r of rows) if (r.period) count.set(r.period, (count.get(r.period) || 0) + 1);
-  let best = '';
-  let bestN = 0;
-  for (const [p, n] of count) if (n > bestN) { best = p; bestN = n; }
-  return best || new Date().toISOString().slice(0, 7);
+const distinctPeriods = (rows: ParsedStockRow[]) => {
+  const set = new Set(rows.map(r => r.period).filter(Boolean));
+  return [...set].sort((a, b) => periodSortKey(b) - periodSortKey(a));
 };
 
 export function StockImportModal({ onImport, onClose }: StockImportModalProps) {
@@ -39,7 +36,7 @@ export function StockImportModal({ onImport, onClose }: StockImportModalProps) {
         setRows(null);
       } else {
         setRows(parsed);
-        setPeriod(mostCommonPeriod(parsed));
+        setPeriod(''); // default: ikuti periode masing-masing item (dari tanggal case-nya)
       }
     } catch (e: any) {
       setError(e?.message || 'Gagal membaca file.');
@@ -48,6 +45,8 @@ export function StockImportModal({ onImport, onClose }: StockImportModalProps) {
       setIsParsing(false);
     }
   };
+
+  const periodOptions = useMemo(() => rows ? distinctPeriods(rows) : [], [rows]);
 
   const missingPicCount = useMemo(() => rows?.filter(r => !r.name).length || 0, [rows]);
   const totalValue = useMemo(() => rows?.reduce((s, r) => s + r.systemValue, 0) || 0, [rows]);
@@ -128,13 +127,18 @@ export function StockImportModal({ onImport, onClose }: StockImportModalProps) {
               </p>
 
               <div>
-                <label className="block text-xs font-medium text-zinc-500 mb-1">Periode Klaim (berlaku untuk semua item)</label>
-                <input
-                  type="month"
+                <label className="block text-xs font-medium text-zinc-500 mb-1">Periode Klaim (opsional, timpa semua item)</label>
+                <select
                   value={period}
                   onChange={e => setPeriod(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-lg"
-                />
+                  className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-lg bg-white"
+                >
+                  <option value="">Otomatis (ikuti tanggal case tiap item)</option>
+                  {periodOptions.map(p => <option key={p} value={p}>Periode {p}</option>)}
+                </select>
+                <p className="text-xs text-zinc-400 mt-1">
+                  Biarkan "Otomatis" kecuali memang mau paksa semua item masuk 1 periode yang sama.
+                </p>
               </div>
 
               {missingPicCount > 0 && (

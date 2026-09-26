@@ -13,13 +13,15 @@
 //    positif (nilai yang diklaimkan/ditagih). value positif (sistem lebih)
 //    -> jadi negatif (pengurang/kredit).
 
+import { getPeriodLabel } from './period';
+
 export interface ParsedStockRow {
   branch: string;
   itemName: string;
   qtySelisih: number; // tanda asli, tidak di-flip
   systemValue: number; // sudah di-flip tanda
   name: string; // PIC, diambil dari tag 👤 terakhir pada case yang dipakai; '' kalau tidak ada
-  period: string; // YYYY-MM, dari tanggal terakhir pada case yang dipakai
+  period: string; // label periode 26-25, mis. "September 2026", dari tanggal case terakhir
   sourceCase: 'SINGLE' | 'NEW_CASE'; // info saja, untuk preview
   rawNetto: number; // sebelum flip, untuk transparansi di preview
   rawValue: number; // sebelum flip
@@ -111,7 +113,7 @@ export function parseStockRevisionRows(rows: any[][]): ParsedStockRow[] {
         qtySelisih: rawNetto,
         systemValue: -rawValue,
         name: picMatch ? picMatch[1] : '',
-        period: dateMatch ? dateMatch[1].slice(0, 7) : '',
+        period: dateMatch ? getPeriodLabel(dateMatch[1]) : '',
         sourceCase,
         rawNetto,
         rawValue,

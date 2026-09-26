@@ -9,7 +9,7 @@ const fmtDate = (v?: string) => {
 export async function exportToExcel(
   records: PenaltyRecord[],
   logs: ActivityLog[],
-  period?: { start?: string; end?: string }
+  period?: { start?: string; end?: string; label?: string }
 ) {
   const XLSX = await import('xlsx');
 
@@ -68,6 +68,8 @@ export async function exportToExcel(
   add(logRows, 'Log Aktivitas', [5, 20, 10, 60]);
 
   const stamp = new Date().toISOString().slice(0, 10);
-  const range = period?.start || period?.end ? `_${period.start || 'awal'}_sd_${period.end || 'akhir'}` : '';
+  const range = period?.label
+    ? `_${period.label.replace(/\s+/g, '_')}`
+    : (period?.start || period?.end ? `_${period.start || 'awal'}_sd_${period.end || 'akhir'}` : '');
   XLSX.writeFile(wb, `data-denda_${stamp}${range}.xlsx`);
 }

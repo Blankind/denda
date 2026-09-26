@@ -9,6 +9,7 @@ import { exportToExcel } from './exportExcel';
 import { Download, ShieldAlert, TrendingDown, Users, List, Activity, Pencil, UserCheck, CheckCircle2, Clock, LayoutGrid, Package, Building2 } from 'lucide-react';
 import { StockOpnamePage } from './pages/StockOpnamePage';
 import { DashboardPage } from './pages/DashboardPage';
+import { getPeriodLabel, getPeriodRangeLabel, collectPeriods } from './lib/period';
 
 interface DendaOperasionalAppProps {
   initialBranch?: string;
@@ -23,55 +24,22 @@ function DendaOperasionalApp({ initialBranch }: DendaOperasionalAppProps = {}) {
   const [isLoading, setIsLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isPayoffOpen, setIsPayoffOpen] = useState(false);
-  const [filterStartDate, setFilterStartDate] = useState('');
-  const [filterEndDate, setFilterEndDate] = useState('');
+  const [periodFilter, setPeriodFilter] = useState('');
   const [branchFilter, setBranchFilter] = useState(initialBranch || '');
 
   const branches = [...new Set(records.map(r => r.branch).filter(Boolean))].sort();
+  const periods = collectPeriods(records.map(r => r.createdAt));
 
-  // Date + Branch Filtering Logic
+  // Periode (siklus 26-25) + Branch Filtering Logic
   const filteredRecords = records.filter(record => {
     if (branchFilter && record.branch !== branchFilter) return false;
-
-    let matchDate = true;
-    if (filterStartDate || filterEndDate) {
-      const recordDate = new Date(record.createdAt);
-      recordDate.setHours(0, 0, 0, 0);
-
-      if (filterStartDate) {
-        const start = new Date(filterStartDate);
-        start.setHours(0, 0, 0, 0);
-        if (recordDate < start) matchDate = false;
-      }
-      
-      if (filterEndDate) {
-        const end = new Date(filterEndDate);
-        end.setHours(0, 0, 0, 0);
-        if (recordDate > end) matchDate = false;
-      }
-    }
-    return matchDate;
+    if (periodFilter && getPeriodLabel(record.createdAt) !== periodFilter) return false;
+    return true;
   });
 
   const filteredLogs = logs.filter(log => {
-    let matchDate = true;
-    if (filterStartDate || filterEndDate) {
-      const logDate = new Date(log.timestamp);
-      logDate.setHours(0, 0, 0, 0);
-
-      if (filterStartDate) {
-        const start = new Date(filterStartDate);
-        start.setHours(0, 0, 0, 0);
-        if (logDate < start) matchDate = false;
-      }
-      
-      if (filterEndDate) {
-        const end = new Date(filterEndDate);
-        end.setHours(0, 0, 0, 0);
-        if (logDate > end) matchDate = false;
-      }
-    }
-    return matchDate;
+    if (periodFilter && getPeriodLabel(log.timestamp) !== periodFilter) return false;
+    return true;
   });
 
   useEffect(() => {
@@ -339,20 +307,17 @@ function DendaOperasionalApp({ initialBranch }: DendaOperasionalAppProps = {}) {
                 {branches.map(b => <option key={b} value={b}>{b}</option>)}
               </select>
             )}
-            <span className="text-sm font-medium text-zinc-500 pl-2">Periode:</span>
-            <input 
-              type="date"
-              value={filterStartDate}
-              onChange={(e) => setFilterStartDate(e.target.value)}
-              className="px-3 py-1.5 bg-zinc-50 border border-zinc-200 rounded-lg text-sm text-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-900"
-            />
-            <span className="text-zinc-400">-</span>
-            <input 
-              type="date"
-              value={filterEndDate}
-              onChange={(e) => setFilterEndDate(e.target.value)}
-              className="px-3 py-1.5 bg-zinc-50 border border-zinc-200 rounded-lg text-sm text-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-900"
-            />
+            {periods.length > 0 && (
+              <select
+                value={periodFilter}
+                onChange={(e) => setPeriodFilter(e.target.value)}
+                title={periodFilter ? getPeriodRangeLabel(periodFilter) : undefined}
+                className="px-3 py-1.5 bg-zinc-50 border border-zinc-200 rounded-lg text-sm text-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-900"
+              >
+                <option value="">Semua Periode</option>
+                {periods.map(p => <option key={p} value={p}>Periode {p}</option>)}
+              </select>
+            )}
             <button
               onClick={() => setIsPayoffOpen(true)}
               className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 bg-zinc-900 text-white rounded-lg hover:bg-zinc-800 transition-colors whitespace-nowrap"
@@ -361,22 +326,27 @@ function DendaOperasionalApp({ initialBranch }: DendaOperasionalAppProps = {}) {
               Lunasi
             </button>
             <button
-              onClick={() => exportToExcel(filteredRecords, filteredLogs, { start: filterStartDate, end: filterEndDate })}
+              onClick={() => exportToExcel(filteredRecords, filteredLogs, { label: periodFilter })}
               disabled={filteredRecords.length === 0}
               className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
             >
               <Download className="w-3.5 h-3.5" />
               Excel
             </button>
-            {(filterStartDate || filterEndDate || branchFilter) && (
+            {(periodFilter || branchFilter) && (
               <button 
-                onClick={() => { setFilterStartDate(''); setFilterEndDate(''); setBranchFilter(''); }}
+                onClick={() => { setPeriodFilter(''); setBranchFilter(''); }}
                 className="text-xs text-rose-600 font-medium px-2 py-1.5 hover:bg-rose-50 rounded-lg transition-colors whitespace-nowrap"
               >
                 Reset
               </button>
             )}
           </div>
+          {periodFilter && (
+            <p className="text-xs text-zinc-400 mt-2">
+              Periode {periodFilter}: {getPeriodRangeLabel(periodFilter)}
+            </p>
+          )}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 mb-8">

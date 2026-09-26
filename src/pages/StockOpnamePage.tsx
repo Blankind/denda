@@ -6,6 +6,7 @@ import { InstallmentModal } from '../components/InstallmentModal';
 import { ClaimPayoffModal } from '../components/ClaimPayoffModal';
 import { StockImportModal } from '../components/StockImportModal';
 import { HistoryModal } from '../components/HistoryModal';
+import { periodSortKey, getPeriodRangeLabel } from '../lib/period';
 
 const formatRupiah = (amount: number) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
@@ -20,6 +21,7 @@ export function StockOpnamePage({ initialBranch }: StockOpnamePageProps = {}) {
   const [isConfigured, setIsConfigured] = useState(true);
   const [query, setQuery] = useState('');
   const [branchFilter, setBranchFilter] = useState(initialBranch || '');
+  const [periodFilter, setPeriodFilter] = useState('');
   const [hideNegative, setHideNegative] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editing, setEditing] = useState<StockOpnameRecord | null>(null);
@@ -55,16 +57,21 @@ export function StockOpnamePage({ initialBranch }: StockOpnamePageProps = {}) {
   };
 
   const branches = useMemo(() => [...new Set(records.map(r => r.branch).filter(Boolean))].sort(), [records]);
+  const periods = useMemo(() => {
+    const set = new Set<string>(records.map(r => r.period).filter((p): p is string => Boolean(p)));
+    return [...set].sort((a, b) => periodSortKey(b) - periodSortKey(a));
+  }, [records]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return records.filter(r => {
       if (branchFilter && r.branch !== branchFilter) return false;
+      if (periodFilter && r.period !== periodFilter) return false;
       if (hideNegative && r.systemValue < 0) return false;
       if (!q) return true;
       return r.itemName.toLowerCase().includes(q) || r.name.toLowerCase().includes(q) || r.branch.toLowerCase().includes(q);
     });
-  }, [records, query, branchFilter, hideNegative]);
+  }, [records, query, branchFilter, periodFilter, hideNegative]);
 
   const handleSave = async (data: StockOpnameRecord) => {
     const exists = records.some(r => r.id === data.id);
@@ -243,6 +250,17 @@ export function StockOpnamePage({ initialBranch }: StockOpnamePageProps = {}) {
             >
               <option value="">Semua Cabang</option>
               {branches.map(b => <option key={b} value={b}>{b}</option>)}
+            </select>
+          )}
+          {periods.length > 0 && (
+            <select
+              value={periodFilter}
+              onChange={e => setPeriodFilter(e.target.value)}
+              title={periodFilter ? getPeriodRangeLabel(periodFilter) : undefined}
+              className="px-3 py-2 text-sm border border-zinc-300 rounded-lg bg-white"
+            >
+              <option value="">Semua Periode</option>
+              {periods.map(p => <option key={p} value={p}>Periode {p}</option>)}
             </select>
           )}
           <label className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 bg-white border border-zinc-300 rounded-lg text-zinc-600 cursor-pointer whitespace-nowrap select-none">
