@@ -90,5 +90,48 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
+  // PUT - bulk update banyak record sekaligus (mis. tandai tidak diakui massal,
+  // pelunasan massal): 1x values.get + 1x values.batchUpdate, bukan N request PUT
+  // paralel per item yang gampang kena rate-limit Google Sheets API.
+  if (req.method === 'PUT') {
+    try {
+      const records: any[] = Array.isArray(req.body) ? req.body : [];
+      if (!records.length) return res.json({ success: true, updated: 0, missing: [] });
+
+      const response = await sheets.spreadsheets.values.get({ spreadsheetId, range: 'StockOpname!A:A' });
+      const rows = response.data.values || [];
+      const rowIndexById = new Map<string, number>();
+      rows.forEach((row: any, idx: number) => {
+        if (row[0]) rowIndexById.set(row[0], idx);
+      });
+
+      const missing: string[] = [];
+      const data = records
+        .map(r => {
+          const rowIndex = rowIndexById.get(r.id);
+          if (rowIndex === undefined) {
+            missing.push(r.id);
+            return null;
+          }
+          return {
+            range: `StockOpname!A${rowIndex + 1}:O${rowIndex + 1}`,
+            values: [toRow(r)],
+          };
+        })
+        .filter((d): d is { range: string; values: any[][] } => d !== null);
+
+      if (data.length) {
+        await sheets.spreadsheets.values.batchUpdate({
+          spreadsheetId,
+          requestBody: { valueInputOption: 'RAW', data },
+        });
+      }
+
+      return res.json({ success: true, updated: data.length, missing });
+    } catch (error: any) {
+      return res.status(500).json({ error: error.message });
+    }
+  }
+
   res.status(405).json({ error: 'Method not allowed' });
 }
