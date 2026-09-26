@@ -46,7 +46,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await sheets.spreadsheets.values.update({
         spreadsheetId,
         range: `StockOpname!A${rowIndex + 1}:O${rowIndex + 1}`,
-        valueInputOption: 'USER_ENTERED',
+        valueInputOption: 'RAW',
         requestBody: { values: [toRow(req.body)] },
       });
 

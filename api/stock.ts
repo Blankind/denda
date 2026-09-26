@@ -81,7 +81,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await sheets.spreadsheets.values.append({
         spreadsheetId,
         range: RANGE,
-        valueInputOption: 'USER_ENTERED',
+        valueInputOption: 'RAW',
         requestBody: { values: [toRow(newRecord)] },
       });
       return res.json({ success: true });
