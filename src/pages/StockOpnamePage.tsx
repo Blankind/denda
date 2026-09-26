@@ -76,10 +76,9 @@ export function StockOpnamePage({ initialBranch }: StockOpnamePageProps = {}) {
       if (branchFilter && r.branch !== branchFilter) return false;
       if (periodFilter && r.period !== periodFilter) return false;
       if (itemGroupFilter && r.itemGroup !== itemGroupFilter) return false;
-      // "Abaikan nilai minus" = sembunyikan kasus surplus/kredit: qty selisih plus TAPI value-nya minus
-      // (logic fix: qty minus -> value plus [klaim ditagih], qty plus -> value minus [pengurang]).
-      // Cuma kombinasi qty+ & value- yang disembunyikan, bukan sembarang value negatif.
-      if (hideNegative && (r.qtySelisih ?? 0) > 0 && r.systemValue < 0) return false;
+      // "Abaikan nilai minus" = sembunyikan item yang nilainya (klaim, atau sistem kalau klaim belum diisi) negatif.
+      // Murni berdasarkan tanda value, tidak peduli tanda qty selisihnya.
+      if (hideNegative && (r.claimValue ?? r.systemValue) < 0) return false;
       if (!q) return true;
       return r.itemName.toLowerCase().includes(q) || r.name.toLowerCase().includes(q) || r.branch.toLowerCase().includes(q) || (r.itemGroup || '').toLowerCase().includes(q);
     }).sort((a, b) => (b.claimValue ?? b.systemValue) - (a.claimValue ?? a.systemValue));
