@@ -134,8 +134,8 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
-        <div className="flex items-center justify-between p-4 border-b border-zinc-200">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl h-[92vh] max-h-[820px] flex flex-col">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-200 shrink-0">
           <h2 className="text-lg font-bold text-zinc-900">Lunasi Klaim Selisih Stock</h2>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-zinc-100 text-zinc-500">
             <X className="w-5 h-5" />
@@ -143,12 +143,12 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
         </div>
 
         {/* Tab Switcher */}
-        <div className="px-4 pt-4">
-          <div className="grid grid-cols-2 gap-2 bg-zinc-100 p-1 rounded-xl">
+        <div className="px-4 pt-3 shrink-0">
+          <div className="grid grid-cols-2 gap-1.5 bg-zinc-100 p-1 rounded-xl">
             <button
               type="button"
               onClick={() => setTab('branch')}
-              className={`flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+              className={`flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
                 tab === 'branch' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-800'
               }`}
             >
@@ -157,14 +157,14 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
             <button
               type="button"
               onClick={() => setTab('manual')}
-              className={`flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+              className={`flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
                 tab === 'manual' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-800'
               }`}
             >
               <ListChecks className="w-4 h-4" /> Item Spesifik
             </button>
           </div>
-          <p className="text-xs text-zinc-400 mt-2 leading-relaxed">
+          <p className="text-xs text-zinc-400 mt-1.5 leading-snug">
             {tab === 'branch'
               ? 'Cukup pilih cabang & total nominal yang dibayar — sistem otomatis alokasikan ke klaim terbuka di cabang itu (yang paling lama diselesaikan lebih dulu). Tidak perlu tunjuk item satu-satu.'
               : 'Pakai ini kalau memang mau menyelesaikan selisih 1 item tertentu saja, terlepas dari klaim lain di cabang yang sama.'}
@@ -174,14 +174,14 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
         {/* ===== TAB: BAYAR CABANG ===== */}
         {tab === 'branch' && (
           <>
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              <div className="grid grid-cols-2 gap-3">
+            <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-3">
+              <div className="grid grid-cols-2 gap-2.5">
                 <div>
                   <label className="block text-xs font-medium text-zinc-500 mb-1">Cabang</label>
                   <select
                     value={branchSelected}
                     onChange={e => setBranchSelected(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-lg bg-white"
+                    className="w-full px-2.5 py-1.5 text-sm border border-zinc-300 rounded-lg bg-white"
                   >
                     <option value="">Pilih cabang...</option>
                     {branchGroups.map(g => (
@@ -199,38 +199,38 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
                     onChange={e => setBranchAmount(e.target.value)}
                     placeholder="cth. 5000000"
                     disabled={!branchSelected}
-                    className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-lg disabled:bg-zinc-50 disabled:text-zinc-400"
+                    className="w-full px-2.5 py-1.5 text-sm border border-zinc-300 rounded-lg disabled:bg-zinc-50 disabled:text-zinc-400"
                   />
                 </div>
               </div>
 
               {activeBranchGroup && (
-                <div className="text-xs text-zinc-500 bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2">
+                <div className="text-xs text-zinc-500 bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5">
                   Total sisa terbuka di <b className="text-zinc-700">{activeBranchGroup.branch}</b>: {formatRupiah(activeBranchGroup.totalSisa)}
                 </div>
               )}
 
               {overpaid > 0 && (
-                <div className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
-                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                <div className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                   <span>Nominal melebihi total sisa cabang ini sebesar {formatRupiah(overpaid)}. Kelebihan tidak dialokasikan kemana pun — sesuaikan nominal kalau perlu.</span>
                 </div>
               )}
 
               {activeBranchGroup && allocation.size > 0 && (
                 <div>
-                  <p className="text-xs font-medium text-zinc-500 mb-1.5">Alokasi otomatis ({allocation.size} item terdampak)</p>
+                  <p className="text-xs font-medium text-zinc-500 mb-1">Alokasi otomatis ({allocation.size} item terdampak)</p>
                   <div className="border border-zinc-200 rounded-xl divide-y divide-zinc-100 overflow-hidden">
                     {activeBranchGroup.items.filter(i => allocation.has(i.id)).map(item => {
                       const applied = allocation.get(item.id)!;
                       const sisa = sisaOf(item);
                       const full = applied >= sisa;
                       return (
-                        <div key={item.id} className="flex items-center gap-3 px-3 py-2 text-sm">
+                        <div key={item.id} className="flex items-center gap-2 px-3 py-1.5 text-xs">
                           <span className="flex-1 min-w-0 truncate text-zinc-700">
                             {item.itemName} <span className="text-zinc-400">· {item.name} · {item.period}</span>
                           </span>
-                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${full ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                          <span className={`font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${full ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
                             {full ? 'Lunas' : 'Sebagian'}
                           </span>
                           <span className="font-medium text-zinc-900 whitespace-nowrap">{formatRupiah(applied)}</span>
@@ -242,29 +242,29 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
               )}
 
               {branchSelected && allocation.size === 0 && (
-                <p className="text-sm text-zinc-400 text-center py-6">Masukkan nominal untuk melihat alokasinya.</p>
+                <p className="text-sm text-zinc-400 text-center py-4">Masukkan nominal untuk melihat alokasinya.</p>
               )}
             </div>
 
-            <div className="p-4 border-t border-zinc-200 space-y-3">
-              <label className="flex items-center gap-2 text-sm bg-zinc-50 rounded-lg p-2.5 cursor-pointer">
+            <div className="px-4 py-3 border-t border-zinc-200 space-y-2 shrink-0">
+              <label className="flex items-center gap-2 text-xs bg-zinc-50 rounded-lg px-2.5 py-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={markClosed}
                   onChange={e => setMarkClosed(e.target.checked)}
-                  className="w-4 h-4 rounded border-zinc-300 accent-emerald-600"
+                  className="w-3.5 h-3.5 rounded border-zinc-300 accent-emerald-600"
                 />
                 <span className="font-medium text-zinc-800">Tandai lunas walau sisa belum 0 (pengampunan sisa terakhir)</span>
               </label>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2.5">
                 <div>
                   <label className="block text-xs font-medium text-zinc-500 mb-1">Tanggal Bayar</label>
                   <input
                     type="date"
                     value={paymentDate}
                     onChange={e => setPaymentDate(e.target.value)}
-                    className="w-full px-2 py-1.5 text-sm border border-zinc-300 rounded-lg"
+                    className="w-full px-2 py-1 text-xs border border-zinc-300 rounded-lg"
                   />
                 </div>
                 <div>
@@ -273,20 +273,20 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
                     value={note}
                     onChange={e => setNote(e.target.value)}
                     placeholder="opsional"
-                    className="w-full px-2 py-1.5 text-sm border border-zinc-300 rounded-lg"
+                    className="w-full px-2 py-1 text-xs border border-zinc-300 rounded-lg"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-1">
-                <div className="text-sm">
+              <div className="flex items-center justify-between pt-0.5">
+                <div className="text-xs">
                   <span className="text-zinc-500">{allocation.size} item terdampak · </span>
                   <span className="font-bold text-zinc-900">{formatRupiah(allocatedTotal)}</span>
                 </div>
                 <button
                   onClick={handleConfirmBranch}
                   disabled={allocation.size === 0}
-                  className="px-4 py-2 text-sm font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="px-3.5 py-1.5 text-xs font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Proses Pelunasan Cabang
                 </button>
@@ -298,7 +298,7 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
         {/* ===== TAB: ITEM SPESIFIK (manual, seperti sebelumnya) ===== */}
         {tab === 'manual' && (
           <>
-            <div className="p-4 border-b border-zinc-200">
+            <div className="px-4 py-3 border-b border-zinc-200 shrink-0">
               <div className="relative">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
                 <input
@@ -306,12 +306,12 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
                   value={query}
                   onChange={e => setQuery(e.target.value)}
                   placeholder="Cari item, nama PIC, atau cabang..."
-                  className="w-full pl-9 pr-3 py-2 text-sm border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                  className="w-full pl-9 pr-3 py-1.5 text-sm border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-zinc-900"
                 />
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-2.5">
               {manualGroups.length === 0 && (
                 <p className="text-sm text-zinc-500 text-center py-8">
                   {open.length === 0 ? 'Tidak ada klaim yang masih terbuka.' : 'Tidak ada item yang cocok.'}
@@ -324,7 +324,7 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
                   <div key={group.branch} className="border border-zinc-200 rounded-xl overflow-hidden">
                     <button
                       onClick={() => toggleGroup(group.items)}
-                      className={`w-full flex items-center justify-between px-3 py-2 text-left transition-colors ${
+                      className={`w-full flex items-center justify-between px-3 py-1.5 text-left transition-colors ${
                         allSelected ? 'bg-emerald-50' : 'bg-zinc-50 hover:bg-zinc-100'
                       }`}
                     >
@@ -336,14 +336,14 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
                     </button>
                     <div className="divide-y divide-zinc-100">
                       {group.items.map(item => (
-                        <label key={item.id} className="flex items-center gap-3 px-3 py-2 text-sm cursor-pointer hover:bg-zinc-50">
+                        <label key={item.id} className="flex items-center gap-2.5 px-3 py-1.5 text-xs cursor-pointer hover:bg-zinc-50">
                           <input
                             type="checkbox"
                             checked={selectedIds.includes(item.id)}
                             onChange={() => toggleOne(item.id)}
-                            className="w-4 h-4 rounded border-zinc-300 accent-zinc-900"
+                            className="w-3.5 h-3.5 rounded border-zinc-300 accent-zinc-900 shrink-0"
                           />
-                          <span className="flex-1 text-zinc-600 truncate">
+                          <span className="flex-1 min-w-0 text-zinc-600 truncate">
                             {item.itemName} <span className="text-zinc-400">· {item.name} · {item.period}</span>
                           </span>
                           <span className="text-zinc-900 font-medium whitespace-nowrap">{formatRupiah(sisaOf(item))}</span>
@@ -355,13 +355,13 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
               })}
             </div>
 
-            <div className="p-4 border-t border-zinc-200 space-y-3">
-              <label className="flex items-center gap-2 text-sm bg-zinc-50 rounded-lg p-2.5 cursor-pointer">
+            <div className="px-4 py-3 border-t border-zinc-200 space-y-2 shrink-0">
+              <label className="flex items-center gap-2 text-xs bg-zinc-50 rounded-lg px-2.5 py-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={markClosed}
                   onChange={e => setMarkClosed(e.target.checked)}
-                  className="w-4 h-4 rounded border-zinc-300 accent-emerald-600"
+                  className="w-3.5 h-3.5 rounded border-zinc-300 accent-emerald-600"
                 />
                 <span className="font-medium text-zinc-800">Tandai Lunas/Cukup (tutup siklus)</span>
               </label>
@@ -372,14 +372,14 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
                   <button
                     type="button"
                     onClick={() => setManualMode('full')}
-                    className={`px-3 py-2 text-sm rounded-lg border ${manualMode === 'full' ? 'bg-zinc-900 text-white border-zinc-900' : 'border-zinc-300 text-zinc-600'}`}
+                    className={`px-3 py-1.5 text-xs rounded-lg border ${manualMode === 'full' ? 'bg-zinc-900 text-white border-zinc-900' : 'border-zinc-300 text-zinc-600'}`}
                   >
                     Lunasi Penuh (sisa)
                   </button>
                   <button
                     type="button"
                     onClick={() => setManualMode('nominal')}
-                    className={`px-3 py-2 text-sm rounded-lg border ${manualMode === 'nominal' ? 'bg-zinc-900 text-white border-zinc-900' : 'border-zinc-300 text-zinc-600'}`}
+                    className={`px-3 py-1.5 text-xs rounded-lg border ${manualMode === 'nominal' ? 'bg-zinc-900 text-white border-zinc-900' : 'border-zinc-300 text-zinc-600'}`}
                   >
                     Nominal Manual
                   </button>
@@ -394,19 +394,19 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
                     value={manualAmount}
                     onChange={e => setManualAmount(e.target.value)}
                     placeholder="Berlaku sama untuk semua item terpilih"
-                    className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-lg"
+                    className="w-full px-2.5 py-1.5 text-xs border border-zinc-300 rounded-lg"
                   />
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2.5">
                 <div>
                   <label className="block text-xs font-medium text-zinc-500 mb-1">Tanggal Bayar</label>
                   <input
                     type="date"
                     value={paymentDate}
                     onChange={e => setPaymentDate(e.target.value)}
-                    className="w-full px-2 py-1.5 text-sm border border-zinc-300 rounded-lg"
+                    className="w-full px-2 py-1 text-xs border border-zinc-300 rounded-lg"
                   />
                 </div>
                 <div>
@@ -415,20 +415,20 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
                     value={note}
                     onChange={e => setNote(e.target.value)}
                     placeholder="opsional"
-                    className="w-full px-2 py-1.5 text-sm border border-zinc-300 rounded-lg"
+                    className="w-full px-2 py-1 text-xs border border-zinc-300 rounded-lg"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-1">
-                <div className="text-sm">
+              <div className="flex items-center justify-between pt-0.5">
+                <div className="text-xs">
                   <span className="text-zinc-500">{selectedIds.length} dipilih · </span>
                   <span className="font-bold text-zinc-900">{formatRupiah(manualSelectedTotal)}</span>
                 </div>
                 <button
                   onClick={handleConfirmManual}
                   disabled={selectedIds.length === 0 || (manualMode === 'nominal' && !manualAmount)}
-                  className="px-4 py-2 text-sm font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="px-3.5 py-1.5 text-xs font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Proses
                 </button>
