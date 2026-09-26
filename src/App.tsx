@@ -31,11 +31,13 @@ function DendaOperasionalApp({ initialBranch }: DendaOperasionalAppProps = {}) {
   const periods = collectPeriods(records.map(r => r.createdAt));
 
   // Periode (siklus 26-25) + Branch Filtering Logic
-  const filteredRecords = records.filter(record => {
-    if (branchFilter && record.branch !== branchFilter) return false;
-    if (periodFilter && getPeriodLabel(record.createdAt) !== periodFilter) return false;
-    return true;
-  });
+  const filteredRecords = records
+    .filter(record => {
+      if (branchFilter && record.branch !== branchFilter) return false;
+      if (periodFilter && getPeriodLabel(record.createdAt) !== periodFilter) return false;
+      return true;
+    })
+    .sort((a, b) => b.amount - a.amount);
 
   const filteredLogs = logs.filter(log => {
     if (periodFilter && getPeriodLabel(log.timestamp) !== periodFilter) return false;
