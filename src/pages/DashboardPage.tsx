@@ -59,7 +59,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps = {}) {
         stockCount: stock.length, stockClaim, stockPaid, stockSisa, stockOpen,
         combinedOutstanding: dendaUnpaid + stockSisa,
       };
-    });
+    }).sort((a, b) => b.combinedOutstanding - a.combinedOutstanding);
   }, [branches, dendaRecords, stockRecords]);
 
   const grand = perBranch.reduce((acc, b) => ({

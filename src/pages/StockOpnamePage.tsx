@@ -82,7 +82,7 @@ export function StockOpnamePage({ initialBranch }: StockOpnamePageProps = {}) {
       if (hideNegative && (r.qtySelisih ?? 0) > 0 && r.systemValue < 0) return false;
       if (!q) return true;
       return r.itemName.toLowerCase().includes(q) || r.name.toLowerCase().includes(q) || r.branch.toLowerCase().includes(q) || (r.itemGroup || '').toLowerCase().includes(q);
-    });
+    }).sort((a, b) => (b.claimValue ?? b.systemValue) - (a.claimValue ?? a.systemValue));
   }, [records, query, branchFilter, periodFilter, itemGroupFilter, hideNegative]);
 
   const handleSave = async (data: StockOpnameRecord) => {
