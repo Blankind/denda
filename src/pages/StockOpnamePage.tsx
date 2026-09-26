@@ -76,9 +76,11 @@ export function StockOpnamePage({ initialBranch }: StockOpnamePageProps = {}) {
       if (branchFilter && r.branch !== branchFilter) return false;
       if (periodFilter && r.period !== periodFilter) return false;
       if (itemGroupFilter && r.itemGroup !== itemGroupFilter) return false;
-      // "Abaikan nilai minus" = sembunyikan item yang nilainya (klaim, atau sistem kalau klaim belum diisi) negatif.
-      // Murni berdasarkan tanda value, tidak peduli tanda qty selisihnya.
-      if (hideNegative && (r.claimValue ?? r.systemValue) < 0) return false;
+      // "Abaikan nilai minus" = sembunyikan item yang nilai ASLI di file (sebelum dibalik tanda) itu minus.
+      // Karena sistem membalik tanda (asli minus -> systemValue jadi plus, asli plus -> systemValue jadi minus),
+      // maka syaratnya: sembunyikan yang systemValue-nya POSITIF. Cek systemValue apa adanya, bukan claimValue,
+      // karena ini soal asal-usul datanya, bukan hasil negosiasi klaim. Qty sama sekali tidak dipakai di sini.
+      if (hideNegative && r.systemValue > 0) return false;
       if (!q) return true;
       return r.itemName.toLowerCase().includes(q) || r.name.toLowerCase().includes(q) || r.branch.toLowerCase().includes(q) || (r.itemGroup || '').toLowerCase().includes(q);
     }).sort((a, b) => (b.claimValue ?? b.systemValue) - (a.claimValue ?? a.systemValue));
