@@ -26,7 +26,10 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
   const [markClosed, setMarkClosed] = useState(true);
   const [note, setNote] = useState('');
 
-  const open = useMemo(() => records.filter(r => !r.isPaidOff), [records]);
+  const open = useMemo(
+    () => records.filter(r => !r.isPaidOff && !r.isNotRecognized && (r.qtySelisih ?? 0) !== 0),
+    [records]
+  );
 
   // Daftar opsi untuk filter (dari seluruh klaim terbuka)
   const allBranches = useMemo(() => [...new Set(open.map(r => r.branch).filter(Boolean))].sort(), [open]);
