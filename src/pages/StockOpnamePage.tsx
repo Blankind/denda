@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { PlusCircle, Search, Package, Pencil, Trash2, Wallet, Upload, CheckCircle2, RotateCcw, Wallet as WalletIcon, Ban, HeartHandshake, History as HistoryIcon } from 'lucide-react';
+import { PlusCircle, Search, Package, Pencil, Trash2, Wallet, Upload, CheckCircle2, RotateCcw, Wallet as WalletIcon, Ban, HeartHandshake, History as HistoryIcon, CheckSquare, Square, X } from 'lucide-react';
 import { StockOpnameRecord, ActivityLog } from '../types';
 import { StockOpnameForm } from '../components/StockOpnameForm';
 import { InstallmentModal } from '../components/InstallmentModal';
@@ -30,6 +30,9 @@ export function StockOpnamePage({ initialBranch }: StockOpnamePageProps = {}) {
   const [historyTarget, setHistoryTarget] = useState<StockOpnameRecord | null>(null);
   const [isPayoffOpen, setIsPayoffOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
+  const [bulkMode, setBulkMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isBulkSaving, setIsBulkSaving] = useState(false);
 
   useEffect(() => {
     fetch('/api/status')
@@ -150,6 +153,52 @@ export function StockOpnamePage({ initialBranch }: StockOpnamePageProps = {}) {
     } catch {
       alert('Gagal menyimpan hasil import ke Spreadsheet.');
     }
+  };
+
+  const handleBulkMarkNotRecognized = async (targetValue: boolean) => {
+    const targets = records.filter(r => selectedIds.includes(r.id));
+    if (!targets.length) return;
+    setIsBulkSaving(true);
+
+    const updated = targets.map(r => ({ ...r, isNotRecognized: targetValue }));
+    setRecords(prev => prev.map(r => updated.find(u => u.id === r.id) || r));
+
+    addLog(
+      'UPDATE',
+      `Bulk edit: tandai ${updated.length} item selisih stock sebagai "${targetValue ? 'Tidak Diakui' : 'Diakui kembali'}"`
+    );
+
+    if (isConfigured) {
+      try {
+        await Promise.all(updated.map(r =>
+          fetch(`/api/stock/${r.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(r),
+          })
+        ));
+      } catch {
+        alert('Beberapa pembaruan mungkin gagal tersimpan ke Spreadsheet.');
+      }
+    }
+
+    setIsBulkSaving(false);
+    setSelectedIds([]);
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const toggleSelectAllFiltered = () => {
+    const ids = filtered.map(r => r.id);
+    const allSelected = ids.every(id => selectedIds.includes(id));
+    setSelectedIds(allSelected ? [] : ids);
+  };
+
+  const exitBulkMode = () => {
+    setBulkMode(false);
+    setSelectedIds([]);
   };
 
   const handleDelete = async (id: string) => {
@@ -281,6 +330,16 @@ export function StockOpnamePage({ initialBranch }: StockOpnamePageProps = {}) {
             Upload File
           </button>
           <button
+            onClick={() => setBulkMode(v => !v)}
+            title="Pilih beberapa item untuk diedit sekaligus"
+            className={`flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg whitespace-nowrap border ${
+              bulkMode ? 'bg-zinc-900 text-white border-zinc-900' : 'bg-white border-zinc-200 text-zinc-600 hover:bg-zinc-50'
+            }`}
+          >
+            <CheckSquare className="w-3.5 h-3.5" />
+            Edit Massal
+          </button>
+          <button
             onClick={() => setIsPayoffOpen(true)}
             className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 bg-zinc-900 text-white rounded-lg hover:bg-zinc-800 whitespace-nowrap"
           >
@@ -296,6 +355,44 @@ export function StockOpnamePage({ initialBranch }: StockOpnamePageProps = {}) {
           </button>
         </div>
 
+        {/* Bar aksi bulk edit (muncul saat mode aktif) */}
+        {bulkMode && (
+          <div className="flex flex-wrap items-center gap-2 bg-zinc-900 text-white rounded-xl px-3 py-2.5">
+            <button
+              onClick={toggleSelectAllFiltered}
+              className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 bg-white/10 rounded-lg hover:bg-white/20 whitespace-nowrap"
+            >
+              <Square className="w-3.5 h-3.5" />
+              {filtered.length > 0 && filtered.every(r => selectedIds.includes(r.id)) ? 'Batal Pilih Semua' : 'Pilih Semua (sesuai filter)'}
+            </button>
+            <span className="text-xs text-zinc-300">{selectedIds.length} item dipilih</span>
+            <div className="flex-1" />
+            <button
+              onClick={() => handleBulkMarkNotRecognized(true)}
+              disabled={!selectedIds.length || isBulkSaving}
+              className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 bg-rose-600 rounded-lg hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+            >
+              <Ban className="w-3.5 h-3.5" />
+              Tandai Tidak Diakui
+            </button>
+            <button
+              onClick={() => handleBulkMarkNotRecognized(false)}
+              disabled={!selectedIds.length || isBulkSaving}
+              className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 bg-white/10 rounded-lg hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              Tandai Diakui Lagi
+            </button>
+            <button
+              onClick={exitBulkMode}
+              title="Keluar dari mode edit massal"
+              className="p-1.5 rounded-lg hover:bg-white/20"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         {/* List */}
         <div className="space-y-2">
           {filtered.length === 0 && (
@@ -307,7 +404,20 @@ export function StockOpnamePage({ initialBranch }: StockOpnamePageProps = {}) {
             const sisa = Math.max(base - paid, 0);
             const forgiveness = r.isPaidOff && r.claimValue !== undefined ? r.systemValue - r.claimValue : 0;
             return (
-              <div key={r.id} className={`bg-white rounded-xl border p-4 flex items-center gap-3 ${r.isNotRecognized ? 'border-zinc-200 opacity-60' : 'border-zinc-200'}`}>
+              <div key={r.id} className={`bg-white rounded-xl border p-4 flex items-center gap-3 ${r.isNotRecognized ? 'border-zinc-200 opacity-60' : 'border-zinc-200'} ${bulkMode && selectedIds.includes(r.id) ? 'ring-2 ring-zinc-900' : ''}`}>
+                {bulkMode && (
+                  <button
+                    onClick={() => toggleSelect(r.id)}
+                    className="shrink-0 p-1 -ml-1 text-zinc-400 hover:text-zinc-900"
+                    title="Pilih item ini"
+                  >
+                    {selectedIds.includes(r.id) ? (
+                      <CheckSquare className="w-5 h-5 text-zinc-900" />
+                    ) : (
+                      <Square className="w-5 h-5" />
+                    )}
+                  </button>
+                )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-semibold text-zinc-900 truncate">{r.itemName}</p>
