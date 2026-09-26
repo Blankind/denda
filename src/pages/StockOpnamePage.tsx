@@ -136,7 +136,7 @@ export function StockOpnamePage({ initialBranch }: StockOpnamePageProps = {}) {
 
     if (!isConfigured) return;
     try {
-      const res = await fetch('/api/stock-bulk', {
+      const res = await fetch('/api/stock', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updated),
@@ -181,7 +181,7 @@ export function StockOpnamePage({ initialBranch }: StockOpnamePageProps = {}) {
 
     if (isConfigured) {
       try {
-        const res = await fetch('/api/stock-bulk', {
+        const res = await fetch('/api/stock', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(updated),
