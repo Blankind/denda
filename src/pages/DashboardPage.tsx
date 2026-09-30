@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Building2, ShieldAlert, Package } from 'lucide-react';
+import { Building2, ShieldAlert, Package, TrendingUp, TrendingDown } from 'lucide-react';
 import { PenaltyRecord, StockOpnameRecord } from '../types';
+import { getPeriodFromDate, formatPeriodLabel } from '../utils/period';
 
 const formatRupiah = (amount: number) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
@@ -14,6 +15,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps = {}) {
   const [stockRecords, setStockRecords] = useState<StockOpnameRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isConfigured, setIsConfigured] = useState(true);
+  const [periodFilter, setPeriodFilter] = useState(''); // '' = Semua Periode (default)
 
   useEffect(() => {
     fetch('/api/status')
@@ -33,42 +35,75 @@ export function DashboardPage({ onNavigate }: DashboardPageProps = {}) {
       .finally(() => setIsLoading(false));
   }, []);
 
+  // Denda Operasional tidak punya field `period` eksplisit -> dihitung dari createdAt pakai siklus 26-25.
+  // Selisih Stock sudah punya `period` sendiri (diisi saat input/import), dipakai langsung.
+  const dendaWithPeriod = useMemo(
+    () => dendaRecords.map(r => ({ ...r, _period: getPeriodFromDate(r.createdAt) })),
+    [dendaRecords]
+  );
+
+  const periods = useMemo(() => {
+    const set = new Set<string>();
+    dendaWithPeriod.forEach(r => r._period && set.add(r._period));
+    stockRecords.forEach(r => r.period && set.add(r.period));
+    return [...set].sort().reverse(); // terbaru dulu
+  }, [dendaWithPeriod, stockRecords]);
+
+  const dendaFiltered = useMemo(
+    () => periodFilter ? dendaWithPeriod.filter(r => r._period === periodFilter) : dendaWithPeriod,
+    [dendaWithPeriod, periodFilter]
+  );
+  const stockFiltered = useMemo(
+    () => periodFilter ? stockRecords.filter(r => r.period === periodFilter) : stockRecords,
+    [stockRecords, periodFilter]
+  );
+
   const branches = useMemo(() => {
     const set = new Set<string>();
-    dendaRecords.forEach(r => r.branch && set.add(r.branch));
-    stockRecords.forEach(r => r.branch && set.add(r.branch));
+    dendaFiltered.forEach(r => r.branch && set.add(r.branch));
+    stockFiltered.forEach(r => r.branch && set.add(r.branch));
     return [...set].sort();
-  }, [dendaRecords, stockRecords]);
+  }, [dendaFiltered, stockFiltered]);
 
   const perBranch = useMemo(() => {
     return branches.map(branch => {
-      const denda = dendaRecords.filter(r => r.branch === branch);
+      const denda = dendaFiltered.filter(r => r.branch === branch);
       const dendaTotal = denda.reduce((s, r) => s + r.amount, 0);
       const dendaPaid = denda.filter(r => r.status === 'PAID').reduce((s, r) => s + r.amount, 0);
       const dendaUnpaid = dendaTotal - dendaPaid;
 
-      const stock = stockRecords.filter(r => r.branch === branch && !r.isNotRecognized);
+      const stock = stockFiltered.filter(r => r.branch === branch && !r.isNotRecognized);
+      // Akumulasi (tidak berubah): dasar hitung tetap claimValue kalau ada, kalau belum pakai systemValue.
       const stockClaim = stock.reduce((s, r) => s + (r.claimValue ?? r.systemValue), 0);
       const stockPaid = stock.reduce((s, r) => s + r.installments.reduce((a, i) => a + i.amount, 0), 0);
       const stockOpen = stock.filter(r => !r.isPaidOff).length;
       const stockSisa = Math.max(stockClaim - stockPaid, 0);
 
+      // Rincian baru: total nilai sistem yang plus (kerugian) vs yang minus (kredit/lebih), terpisah.
+      const stockPositive = stock.filter(r => r.systemValue > 0).reduce((s, r) => s + r.systemValue, 0);
+      const stockNegative = stock.filter(r => r.systemValue < 0).reduce((s, r) => s + r.systemValue, 0);
+      const stockPositiveCount = stock.filter(r => r.systemValue > 0).length;
+      const stockNegativeCount = stock.filter(r => r.systemValue < 0).length;
+
       return {
         branch,
         dendaCount: denda.length, dendaTotal, dendaPaid, dendaUnpaid,
         stockCount: stock.length, stockClaim, stockPaid, stockSisa, stockOpen,
+        stockPositive, stockNegative, stockPositiveCount, stockNegativeCount,
         combinedOutstanding: dendaUnpaid + stockSisa,
       };
     }).sort((a, b) => b.combinedOutstanding - a.combinedOutstanding);
-  }, [branches, dendaRecords, stockRecords]);
+  }, [branches, dendaFiltered, stockFiltered]);
 
   const grand = perBranch.reduce((acc, b) => ({
     dendaTotal: acc.dendaTotal + b.dendaTotal,
     dendaUnpaid: acc.dendaUnpaid + b.dendaUnpaid,
     stockClaim: acc.stockClaim + b.stockClaim,
     stockSisa: acc.stockSisa + b.stockSisa,
+    stockPositive: acc.stockPositive + b.stockPositive,
+    stockNegative: acc.stockNegative + b.stockNegative,
     combinedOutstanding: acc.combinedOutstanding + b.combinedOutstanding,
-  }), { dendaTotal: 0, dendaUnpaid: 0, stockClaim: 0, stockSisa: 0, combinedOutstanding: 0 });
+  }), { dendaTotal: 0, dendaUnpaid: 0, stockClaim: 0, stockSisa: 0, stockPositive: 0, stockNegative: 0, combinedOutstanding: 0 });
 
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center text-zinc-400 text-sm">Memuat...</div>;
@@ -83,9 +118,19 @@ export function DashboardPage({ onNavigate }: DashboardPageProps = {}) {
       )}
 
       <header className="bg-white border-b border-zinc-200 px-4 py-4 sm:px-6 sticky top-11 z-30">
-        <div className="max-w-5xl mx-auto flex items-center gap-2">
-          <Building2 className="w-5 h-5 text-zinc-900" />
-          <h1 className="text-lg font-bold text-zinc-900">Dashboard per Cabang</h1>
+        <div className="max-w-5xl mx-auto flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Building2 className="w-5 h-5 text-zinc-900" />
+            <h1 className="text-lg font-bold text-zinc-900">Dashboard per Cabang</h1>
+          </div>
+          <select
+            value={periodFilter}
+            onChange={e => setPeriodFilter(e.target.value)}
+            className="ml-auto px-3 py-1.5 text-sm border border-zinc-300 rounded-lg bg-white"
+          >
+            <option value="">Semua Periode</option>
+            {periods.map(p => <option key={p} value={p}>{formatPeriodLabel(p)}</option>)}
+          </select>
         </div>
       </header>
 
@@ -106,8 +151,30 @@ export function DashboardPage({ onNavigate }: DashboardPageProps = {}) {
           </div>
         </div>
 
+        {/* Rincian nilai + / - gabungan semua cabang */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-white rounded-xl border border-zinc-200 p-4 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center shrink-0">
+              <TrendingUp className="w-4 h-4 text-rose-600" />
+            </div>
+            <div>
+              <p className="text-xs text-zinc-500">Total Nilai Kerugian (+)</p>
+              <p className="font-bold text-rose-600">{formatRupiah(grand.stockPositive)}</p>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl border border-zinc-200 p-4 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
+              <TrendingDown className="w-4 h-4 text-emerald-600" />
+            </div>
+            <div>
+              <p className="text-xs text-zinc-500">Total Nilai Kredit/Lebih (-)</p>
+              <p className="font-bold text-emerald-600">{formatRupiah(grand.stockNegative)}</p>
+            </div>
+          </div>
+        </div>
+
         {branches.length === 0 && (
-          <p className="text-sm text-zinc-400 text-center py-10">Belum ada data cabang.</p>
+          <p className="text-sm text-zinc-400 text-center py-10">Belum ada data{periodFilter ? ` untuk periode ${formatPeriodLabel(periodFilter)}` : ' cabang'}.</p>
         )}
 
         {/* Card per cabang */}
@@ -168,6 +235,18 @@ export function DashboardPage({ onNavigate }: DashboardPageProps = {}) {
                     <div>
                       <p className="text-xs text-zinc-400">Sisa</p>
                       <p className="font-medium text-amber-600">{formatRupiah(b.stockSisa)}</p>
+                    </div>
+                  </div>
+
+                  {/* Rincian nilai + / - per cabang */}
+                  <div className="grid grid-cols-2 gap-2 text-sm mt-2 pt-2 border-t border-dashed border-zinc-100">
+                    <div>
+                      <p className="text-xs text-zinc-400">Kerugian (+) · {b.stockPositiveCount} item</p>
+                      <p className="font-medium text-rose-600">{formatRupiah(b.stockPositive)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-zinc-400">Kredit/Lebih (-) · {b.stockNegativeCount} item</p>
+                      <p className="font-medium text-emerald-600">{formatRupiah(b.stockNegative)}</p>
                     </div>
                   </div>
                 </div>

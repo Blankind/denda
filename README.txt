@@ -1,22 +1,14 @@
-Auto-create tab StockOpname & StockLogs. Tidak perlu buat tab manual lagi.
-
 BARU:
-  api/_stock-sheets.ts   fungsi ensureStockSheets() — cek & buat tab + header
-                         kalau belum ada
+  src/utils/period.ts        siklus 26-25 (getPeriodFromDate, formatPeriodLabel)
 
 UPDATE:
-  api/stock.ts
-  api/stock-detail.ts
-  api/stock-logs.ts
-    -> masing-masing panggil ensureStockSheets() sebelum baca/tulis data
-
-Cara kerja: panggilan API pertama ke /api/stock, /api/stock/:id, atau
-/api/stock-logs akan otomatis cek spreadsheet. Kalau tab "StockOpname" atau
-"StockLogs" belum ada, dibuatkan otomatis lengkap dengan header:
-
-  StockOpname: id | createdAt | period | itemName | branch | name |
-               qtySelisih | systemValue | claimValue | installmentsJson |
-               isPaidOff | description
-  StockLogs:   id | timestamp | action | details
-
-Tidak menyentuh api/_sheets.ts (kredensial aman).
+  src/pages/DashboardPage.tsx
+    - filter Periode di header (default: Semua Periode)
+    - Denda Operasional: periode dihitung dari createdAt pakai siklus 26-25
+      (tidak ada field period eksplisit di modul itu)
+    - Selisih Stock: pakai field `period` yang sudah ada apa adanya
+    - Rincian baru per cabang & total gabungan: "Kerugian (+)" vs "Kredit/Lebih (-)",
+      dipecah dari systemValue asli (bukan claimValue), sesuai fix checkbox
+      "Abaikan nilai minus" sebelumnya
+    - Angka akumulasi lama (stockClaim, stockSisa, dendaUnpaid, dst) TIDAK diubah
+      logikanya, cuma sekarang ikut terpengaruh filter periode kalau dipilih
