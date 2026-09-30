@@ -273,6 +273,28 @@ export function ClaimPayoffModal({ records, onBulkSettle, onClose }: ClaimPayoff
                 </div>
               </div>
 
+              {(branchGroupFilter || branchItemGroupFilter) && branchGroups.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-zinc-500 mb-1">
+                    Item yang cocok filter ({branchGroups.reduce((s, g) => s + g.items.length, 0)} klaim · total{' '}
+                    {formatRupiah(branchGroups.reduce((s, g) => s + g.totalSisa, 0))})
+                  </p>
+                  <div className="border border-zinc-200 rounded-xl divide-y divide-zinc-100 overflow-hidden max-h-52 overflow-y-auto">
+                    {branchGroups.flatMap(g => g.items.map(item => (
+                      <div key={item.id} className="flex items-center gap-2 px-3 py-1.5 text-xs">
+                        <span className="flex-1 min-w-0 truncate text-zinc-700">
+                          {item.itemName}{' '}
+                          <span className="text-zinc-400">
+                            · {item.branch} · {item.itemGroup ? `${item.itemGroup} · ` : ''}{item.name} · {item.period}
+                          </span>
+                        </span>
+                        <span className="font-medium text-zinc-900 whitespace-nowrap">{formatRupiah(sisaOf(item))}</span>
+                      </div>
+                    )))}
+                  </div>
+                </div>
+              )}
+
               {activeBranchGroup && (
                 <div className="text-xs text-zinc-500 bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5">
                   Total sisa terbuka di <b className="text-zinc-700">{activeBranchGroup.branch}</b>

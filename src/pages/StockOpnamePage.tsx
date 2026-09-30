@@ -23,7 +23,7 @@ export function StockOpnamePage({ initialBranch }: StockOpnamePageProps = {}) {
   const [branchFilter, setBranchFilter] = useState(initialBranch || '');
   const [periodFilter, setPeriodFilter] = useState('');
   const [itemGroupFilter, setItemGroupFilter] = useState('');
-  const [hideNegative, setHideNegative] = useState(false);
+  const [valueFilter, setValueFilter] = useState<'all' | 'positive' | 'negative'>('all');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editing, setEditing] = useState<StockOpnameRecord | null>(null);
   const [seed, setSeed] = useState<Partial<StockOpnameRecord> | null>(null);
@@ -70,21 +70,42 @@ export function StockOpnamePage({ initialBranch }: StockOpnamePageProps = {}) {
     [records]
   );
 
+  // Rekapan rupiah per item group (ikut filter cabang/periode/nilai yg lagi aktif, kecuali item group-nya
+  // sendiri), biar dropdown Item Group nunjukin jumlah kasus & total nilai kayak di tab Lunasi.
+  const itemGroupStats = useMemo(() => {
+    const base = records.filter(r => {
+      if (r.isNotRecognized) return false;
+      if (branchFilter && r.branch !== branchFilter) return false;
+      if (periodFilter && r.period !== periodFilter) return false;
+      if (valueFilter === 'positive' && !(r.systemValue > 0)) return false;
+      if (valueFilter === 'negative' && !(r.systemValue < 0)) return false;
+      return true;
+    });
+    const map = new Map<string, { count: number; total: number }>();
+    for (const r of base) {
+      if (!r.itemGroup) continue;
+      const cur = map.get(r.itemGroup) || { count: 0, total: 0 };
+      cur.count += 1;
+      cur.total += r.claimValue ?? r.systemValue;
+      map.set(r.itemGroup, cur);
+    }
+    return map;
+  }, [records, branchFilter, periodFilter, valueFilter]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return records.filter(r => {
       if (branchFilter && r.branch !== branchFilter) return false;
       if (periodFilter && r.period !== periodFilter) return false;
       if (itemGroupFilter && r.itemGroup !== itemGroupFilter) return false;
-      // "Abaikan nilai minus" = sembunyikan item yang nilai ASLI di file (sebelum dibalik tanda) itu minus.
-      // Karena sistem membalik tanda (asli minus -> systemValue jadi plus, asli plus -> systemValue jadi minus),
-      // maka syaratnya: sembunyikan yang systemValue-nya POSITIF. Cek systemValue apa adanya, bukan claimValue,
-      // karena ini soal asal-usul datanya, bukan hasil negosiasi klaim. Qty sama sekali tidak dipakai di sini.
-      if (hideNegative && r.systemValue > 0) return false;
+      // Filter tanda nilai: berdasarkan systemValue yang BENERAN tampil di kartu/list, bukan nilai
+      // mentah sebelum dibalik. Jadi "+ saja" / "- saja" di sini match persis apa yang user lihat.
+      if (valueFilter === 'positive' && !(r.systemValue > 0)) return false;
+      if (valueFilter === 'negative' && !(r.systemValue < 0)) return false;
       if (!q) return true;
       return r.itemName.toLowerCase().includes(q) || r.name.toLowerCase().includes(q) || r.branch.toLowerCase().includes(q) || (r.itemGroup || '').toLowerCase().includes(q);
     }).sort((a, b) => (b.claimValue ?? b.systemValue) - (a.claimValue ?? a.systemValue));
-  }, [records, query, branchFilter, periodFilter, itemGroupFilter, hideNegative]);
+  }, [records, query, branchFilter, periodFilter, itemGroupFilter, valueFilter]);
 
   const handleSave = async (data: StockOpnameRecord) => {
     const exists = records.some(r => r.id === data.id);
@@ -333,18 +354,26 @@ export function StockOpnamePage({ initialBranch }: StockOpnamePageProps = {}) {
               className="px-3 py-2 text-sm border border-zinc-300 rounded-lg bg-white"
             >
               <option value="">Semua Item Group</option>
-              {itemGroups.map(g => <option key={g} value={g}>{g}</option>)}
+              {itemGroups.map(g => {
+                const stat = itemGroupStats.get(g);
+                return (
+                  <option key={g} value={g}>
+                    {g}{stat ? ` — ${stat.count} item · ${formatRupiah(stat.total)}` : ''}
+                  </option>
+                );
+              })}
             </select>
           )}
-          <label className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 bg-white border border-zinc-300 rounded-lg text-zinc-600 cursor-pointer whitespace-nowrap select-none">
-            <input
-              type="checkbox"
-              checked={hideNegative}
-              onChange={e => setHideNegative(e.target.checked)}
-              className="w-3.5 h-3.5"
-            />
-            Abaikan nilai minus (-)
-          </label>
+          <select
+            value={valueFilter}
+            onChange={e => setValueFilter(e.target.value as typeof valueFilter)}
+            title="Filter berdasarkan tanda nilai sistem yang tampil"
+            className="px-3 py-2 text-sm border border-zinc-300 rounded-lg bg-white"
+          >
+            <option value="all">Semua Nilai (+ dan -)</option>
+            <option value="positive">Nilai + saja</option>
+            <option value="negative">Nilai - saja</option>
+          </select>
           <button
             onClick={() => setIsImportOpen(true)}
             title="Upload file reconciliation selisih stock"
