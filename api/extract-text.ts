@@ -6,6 +6,17 @@ const ai = new GoogleGenAI({
   httpOptions: { headers: { 'User-Agent': 'aistudio-build' } },
 });
 
+// Nama pegawai yang kena denda = kata terakhir dari nama (tanpa gelar & nomor HP).
+// "PAK UDIN 081234834455" -> "UDIN"
+function lastNameWord(text: string): string {
+  const words = (text || '')
+    .replace(/\(?\+?\d[\d\s-]{6,}\d\)?/g, ' ') // buang nomor HP
+    .split(/\s+/)
+    .map((w) => w.replace(/[^\p{L}\p{N}]+$/u, ''))
+    .filter(Boolean);
+  return words.length ? words[words.length - 1] : '';
+}
+
 function parseExcelTsv(rawText: string) {
   const lines = rawText.split(/\r?\n/);
   const records: any[] = [];
@@ -53,8 +64,8 @@ function parseExcelTsv(rawText: string) {
       if (!rawAmount) rawAmount = (parts[7] || parts[parts.length - 1] || '').replace(/[^\d]/g, '');
       const amount = Number(rawAmount) || 50000;
 
-      let name = pic || customer || 'Tanpa Nama';
-      if (pic && customer && !pic.includes(customer)) name = `${pic} (${customer})`;
+      // Nama pegawai: kata terakhir dari kolom nama (kolom ke-4), mis. "PAK UDIN 0812..." -> "UDIN"
+      const name = lastNameWord(customer) || lastNameWord(pic) || 'Tanpa Nama';
 
       let description = problem;
       if (note) description = problem ? `${problem} - ${note}` : note;
@@ -93,7 +104,7 @@ ${rawText}
 """
 
 Aturan field:
-- "name": nama orang, PIC, toko, atau pelanggan
+- "name": nama pegawai yang kena denda, ambil HANYA kata terakhir dari namanya (buang gelar seperti PAK/BU dan nomor HP). Contoh: "PAK UDIN 081234834455" -> "UDIN"
 - "branch": nama gudang/cabang jika ada (contoh: "GUDANG 1")
 - "amount": nominal angka
 - "description": alasan denda atau jenis kesalahan (misal SALAH MUAT, TDK TERKIRIM)
@@ -135,7 +146,7 @@ Aturan field:
     const cleaned = recordsList
       .filter((r: any) => r && (r.name || r.description || r.amount))
       .map((r: any) => ({
-        name: String(r.name || 'Tanpa Nama').trim(),
+        name: lastNameWord(String(r.name || '')) || 'Tanpa Nama',
         branch: String(r.branch || 'GUDANG 1').trim(),
         amount: Number(r.amount) || 0,
         description: String(r.description || '-').trim(),
