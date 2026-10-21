@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Building2, ShieldAlert, Package, TrendingUp, TrendingDown } from 'lucide-react';
 import { PenaltyRecord, StockOpnameRecord } from '../types';
-import { getPeriodFromDate, formatPeriodLabel } from '../utils/period';
+import { getPeriodLabel, getCurrentPeriodLabel, withCurrentPeriod } from '../lib/period';
 
 const formatRupiah = (amount: number) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
@@ -15,7 +15,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps = {}) {
   const [stockRecords, setStockRecords] = useState<StockOpnameRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isConfigured, setIsConfigured] = useState(true);
-  const [periodFilter, setPeriodFilter] = useState(''); // '' = Semua Periode (default)
+  const [periodFilter, setPeriodFilter] = useState(getCurrentPeriodLabel()); // default: periode berjalan (26-25); '' = Semua Periode
 
   useEffect(() => {
     fetch('/api/status')
@@ -38,7 +38,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps = {}) {
   // Denda Operasional tidak punya field `period` eksplisit -> dihitung dari createdAt pakai siklus 26-25.
   // Selisih Stock sudah punya `period` sendiri (diisi saat input/import), dipakai langsung.
   const dendaWithPeriod = useMemo(
-    () => dendaRecords.map(r => ({ ...r, _period: getPeriodFromDate(r.createdAt) })),
+    () => dendaRecords.map(r => ({ ...r, _period: getPeriodLabel(r.createdAt) })),
     [dendaRecords]
   );
 
@@ -46,7 +46,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps = {}) {
     const set = new Set<string>();
     dendaWithPeriod.forEach(r => r._period && set.add(r._period));
     stockRecords.forEach(r => r.period && set.add(r.period));
-    return [...set].sort().reverse(); // terbaru dulu
+    return withCurrentPeriod([...set]); // terbaru dulu
   }, [dendaWithPeriod, stockRecords]);
 
   const dendaFiltered = useMemo(
@@ -129,7 +129,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps = {}) {
             className="ml-auto px-3 py-1.5 text-sm border border-zinc-300 rounded-lg bg-white"
           >
             <option value="">Semua Periode</option>
-            {periods.map(p => <option key={p} value={p}>{formatPeriodLabel(p)}</option>)}
+            {periods.map(p => <option key={p} value={p}>{p}</option>)}
           </select>
         </div>
       </header>
@@ -174,7 +174,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps = {}) {
         </div>
 
         {branches.length === 0 && (
-          <p className="text-sm text-zinc-400 text-center py-10">Belum ada data{periodFilter ? ` untuk periode ${formatPeriodLabel(periodFilter)}` : ' cabang'}.</p>
+          <p className="text-sm text-zinc-400 text-center py-10">Belum ada data{periodFilter ? ` untuk periode ${periodFilter}` : ' cabang'}.</p>
         )}
 
         {/* Card per cabang */}

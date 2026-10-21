@@ -9,7 +9,7 @@ import { exportToExcel } from './exportExcel';
 import { Download, ShieldAlert, TrendingDown, Users, List, Activity, Pencil, UserCheck, CheckCircle2, Clock, LayoutGrid, Package, Building2 } from 'lucide-react';
 import { StockOpnamePage } from './pages/StockOpnamePage';
 import { DashboardPage } from './pages/DashboardPage';
-import { getPeriodLabel, getPeriodRangeLabel, collectPeriods } from './lib/period';
+import { getPeriodLabel, getPeriodRangeLabel, collectPeriods, getCurrentPeriodLabel, withCurrentPeriod } from './lib/period';
 
 interface DendaOperasionalAppProps {
   initialBranch?: string;
@@ -24,11 +24,12 @@ function DendaOperasionalApp({ initialBranch }: DendaOperasionalAppProps = {}) {
   const [isLoading, setIsLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isPayoffOpen, setIsPayoffOpen] = useState(false);
-  const [periodFilter, setPeriodFilter] = useState('');
+  const currentPeriod = getCurrentPeriodLabel();
+  const [periodFilter, setPeriodFilter] = useState(currentPeriod); // default: periode berjalan (26-25)
   const [branchFilter, setBranchFilter] = useState(initialBranch || '');
 
   const branches = [...new Set(records.map(r => r.branch).filter(Boolean))].sort();
-  const periods = collectPeriods(records.map(r => r.createdAt));
+  const periods = withCurrentPeriod(collectPeriods(records.map(r => r.createdAt)));
 
   // Periode (siklus 26-25) + Branch Filtering Logic
   const filteredRecords = records
@@ -317,7 +318,7 @@ function DendaOperasionalApp({ initialBranch }: DendaOperasionalAppProps = {}) {
                 className="px-3 py-1.5 bg-zinc-50 border border-zinc-200 rounded-lg text-sm text-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-900"
               >
                 <option value="">Semua Periode</option>
-                {periods.map(p => <option key={p} value={p}>Periode {p}</option>)}
+                {periods.map(p => <option key={p} value={p}>{p}</option>)}
               </select>
             )}
             <button
@@ -335,9 +336,9 @@ function DendaOperasionalApp({ initialBranch }: DendaOperasionalAppProps = {}) {
               <Download className="w-3.5 h-3.5" />
               Excel
             </button>
-            {(periodFilter || branchFilter) && (
+            {(periodFilter !== currentPeriod || branchFilter) && (
               <button 
-                onClick={() => { setPeriodFilter(''); setBranchFilter(''); }}
+                onClick={() => { setPeriodFilter(currentPeriod); setBranchFilter(''); }}
                 className="text-xs text-rose-600 font-medium px-2 py-1.5 hover:bg-rose-50 rounded-lg transition-colors whitespace-nowrap"
               >
                 Reset

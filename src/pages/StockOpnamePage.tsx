@@ -6,7 +6,7 @@ import { InstallmentModal } from '../components/InstallmentModal';
 import { ClaimPayoffModal } from '../components/ClaimPayoffModal';
 import { StockImportModal } from '../components/StockImportModal';
 import { HistoryModal } from '../components/HistoryModal';
-import { periodSortKey, getPeriodRangeLabel } from '../lib/period';
+import { periodSortKey, getPeriodRangeLabel, getCurrentPeriodLabel, withCurrentPeriod } from '../lib/period';
 
 const formatRupiah = (amount: number) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
@@ -21,7 +21,7 @@ export function StockOpnamePage({ initialBranch }: StockOpnamePageProps = {}) {
   const [isConfigured, setIsConfigured] = useState(true);
   const [query, setQuery] = useState('');
   const [branchFilter, setBranchFilter] = useState(initialBranch || '');
-  const [periodFilter, setPeriodFilter] = useState('');
+  const [periodFilter, setPeriodFilter] = useState(getCurrentPeriodLabel()); // default: periode berjalan (26-25)
   const [itemGroupFilter, setItemGroupFilter] = useState('');
   const [valueFilter, setValueFilter] = useState<'all' | 'positive' | 'negative'>('all');
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -63,7 +63,7 @@ export function StockOpnamePage({ initialBranch }: StockOpnamePageProps = {}) {
   const branches = useMemo(() => [...new Set(records.map(r => r.branch).filter(Boolean))].sort(), [records]);
   const periods = useMemo(() => {
     const set = new Set<string>(records.map(r => r.period).filter((p): p is string => Boolean(p)));
-    return [...set].sort((a, b) => periodSortKey(b) - periodSortKey(a));
+    return withCurrentPeriod([...set]);
   }, [records]);
   const itemGroups = useMemo(
     () => [...new Set(records.map(r => r.itemGroup).filter((g): g is string => Boolean(g)))].sort(),
@@ -344,7 +344,7 @@ export function StockOpnamePage({ initialBranch }: StockOpnamePageProps = {}) {
               className="px-3 py-2 text-sm border border-zinc-300 rounded-lg bg-white"
             >
               <option value="">Semua Periode</option>
-              {periods.map(p => <option key={p} value={p}>Periode {p}</option>)}
+              {periods.map(p => <option key={p} value={p}>{p}</option>)}
             </select>
           )}
           {itemGroups.length > 0 && (

@@ -82,3 +82,16 @@ export function collectPeriods(dates: (string | Date)[]): string[] {
   }
   return [...set].sort((a, b) => periodSortKey(b) - periodSortKey(a));
 }
+
+/** Periode yang sedang berjalan hari ini (otomatis ganti tiap tanggal 26). Mis. 21 Okt 2026 -> "Oktober 2026". */
+export function getCurrentPeriodLabel(): string {
+  return getPeriodLabel(new Date());
+}
+
+/** Pastikan periode berjalan selalu ada di daftar dropdown, walau belum ada datanya. Terurut terbaru dulu. */
+export function withCurrentPeriod(periods: string[]): string[] {
+  const set = new Set(periods);
+  const current = getCurrentPeriodLabel();
+  if (current) set.add(current);
+  return [...set].sort((a, b) => periodSortKey(b) - periodSortKey(a));
+}
