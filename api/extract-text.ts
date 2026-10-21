@@ -55,8 +55,14 @@ function parseExcelTsv(rawText: string) {
       const problem = (parts[5] || '').trim();
       const note = (parts[6] || '').trim();
 
+      // Format baru: kolom terakhir = penanggung jawab (mis. "Gudang 2"), cabang selalu KREMBUNG.
+      let lastIdx = parts.length - 1;
+      while (lastIdx > 0 && !(parts[lastIdx] || '').trim()) lastIdx--;
+      const lastCell = (parts[lastIdx] || '').trim();
+      const isGudangPJ = lastIdx >= 8 && /^GUDANG\s*[A-Za-z0-9_-]+$/i.test(lastCell);
+
       let rawAmount = '';
-      for (let i = parts.length - 1; i >= 1; i--) {
+      for (let i = (isGudangPJ ? lastIdx - 1 : parts.length - 1); i >= 1; i--) {
         const p = (parts[i] || '').trim();
         const digitsOnly = p.replace(/[^\d]/g, '');
         if (digitsOnly && digitsOnly.length >= 4) { rawAmount = digitsOnly; break; }
@@ -65,7 +71,9 @@ function parseExcelTsv(rawText: string) {
       const amount = Number(rawAmount) || 50000;
 
       // Nama pegawai: kata terakhir dari kolom nama (kolom ke-4), mis. "PAK UDIN 0812..." -> "UDIN"
-      const name = lastNameWord(customer) || lastNameWord(pic) || 'Tanpa Nama';
+      const name = isGudangPJ
+        ? lastCell.toUpperCase().replace(/\s+/g, ' ')
+        : (lastNameWord(customer) || lastNameWord(pic) || 'Tanpa Nama');
 
       let description = problem;
       if (note) description = problem ? `${problem} - ${note}` : note;
@@ -74,7 +82,8 @@ function parseExcelTsv(rawText: string) {
       if (qty) documentDetail = `${itemDesc} [Qty: ${qty}]`;
 
       let rowBranch = currentBranch;
-      if (/KREMBUNG/i.test(line)) rowBranch = 'KREMBUNG';
+      if (isGudangPJ) rowBranch = 'KREMBUNG';
+      else if (/KREMBUNG/i.test(line)) rowBranch = 'KREMBUNG';
       else if (/GUDANG\s*2/i.test(line)) rowBranch = 'GUDANG 2';
       else if (/GUDANG\s*1/i.test(line)) rowBranch = 'GUDANG 1';
 
